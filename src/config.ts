@@ -392,6 +392,8 @@ export const MATCH = {
   READY_EPS: 0.8,
   /** AI 키커는 준비가 끝나고 이 시간(초) 뒤에 찬다 */
   AI_TAKE_DELAY: 1.0,
+  /** 사람이 키커인데 이 시간(초) 동안 차지 않으면 AI가 대신 찬다 (손대지 않아도 경기가 끝까지 진행) */
+  HUMAN_TAKE_TIMEOUT: 8,
   /** 키커가 공 뒤에 서는 거리 (m, 킥 거리 0.9 안) */
   TAKER_GAP: 0.6,
   /** 킥오프·코너킥·골킥 때 상대가 공에서 떨어져야 하는 거리, 스로인은 THROW_MIN_DIST */
@@ -539,6 +541,33 @@ export const HUD_STYLE = {
   MINIMAP_BALL: 0xffffff,
   MINIMAP_BALL_DOT: 2.5,
 } as const;
+
+/** 타이틀·일시정지 메뉴 */
+export const MENU_STYLE = {
+  TITLE: 'FC',
+  SUBTITLE: '탑뷰 2D 축구',
+  TITLE_FONT_SIZE: '96px',
+  SUBTITLE_FONT_SIZE: '22px',
+  ITEM_FONT_SIZE: '28px',
+  ITEM_GAP: 52,
+  ITEMS_Y: 330,
+  COLOR: '#ffffff',
+  SELECTED_COLOR: '#ffd600',
+  DIM_COLOR: '#a5d6a7',
+  BG: 0x0b3d0b,
+  /** 일시정지 메뉴 뒤 화면을 가리는 정도 */
+  PAUSE_DIM_ALPHA: 0.55,
+  HELP_FONT_SIZE: '20px',
+  HELP_LINE_GAP: 32,
+} as const;
+
+/** 타이틀에서 고르는 우리 팀(홈) 색. 상대(원정)는 PLAYER_STYLE.AWAY_COLOR(파랑) 고정 */
+export const HOME_COLOR_OPTIONS = [
+  { name: '빨강', color: 0xd32f2f },
+  { name: '노랑', color: 0xf9a825 },
+  { name: '하양', color: 0xeeeeee },
+  { name: '보라', color: 0x8e24aa },
+] as const;
 
 /** 경기 카메라. DESIGN.md §8 */
 export const CAMERA = {

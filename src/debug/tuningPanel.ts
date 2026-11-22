@@ -6,8 +6,9 @@ import { formatTunables } from './configFormat';
 /**
  * 개발 빌드 전용 Tweakpane 튜닝 패널. main 번들에 들어가지 않도록
  * 반드시 `if (import.meta.env.DEV)` 안에서 동적 import로만 불러온다.
+ * 패널을 없애는 함수를 돌려준다 (경기 화면을 다시 시작할 때 패널이 쌓이지 않게).
  */
-export function createTuningPanel(clock: FixedStepClock): void {
+export function createTuningPanel(clock: FixedStepClock): () => void {
   const pane = new Pane({ title: '튜닝 (개발 빌드)' });
 
   const time = pane.addFolder({ title: '시간' });
@@ -29,7 +30,11 @@ export function createTuningPanel(clock: FixedStepClock): void {
   });
 
   // 키보드(P, [ ])로 바뀐 값을 패널에 반영
-  window.setInterval(() => pane.refresh(), DEBUG.PANEL_REFRESH_MS);
+  const timer = window.setInterval(() => pane.refresh(), DEBUG.PANEL_REFRESH_MS);
+  return () => {
+    window.clearInterval(timer);
+    pane.dispose();
+  };
 }
 
 async function copyToClipboard(text: string): Promise<void> {

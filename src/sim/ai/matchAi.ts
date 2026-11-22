@@ -145,7 +145,8 @@ export class MatchAi {
     if (m.phase !== 'setPiece' || !m.ready || s.time - m.readyAt < MATCH.AI_TAKE_DELAY) return;
     const taker = s.players[m.takerId];
     const i = intents[m.takerId];
-    if (!taker || !i || taker.id === excludeId) return;
+    if (!taker || !i) return;
+    if (taker.id === excludeId && s.time - m.readyAt < MATCH.HUMAN_TAKE_TIMEOUT) return;
     const kick = (this.kicks[taker.id] ??= { type: 'pass', power: 0, aimX: 0, aimY: 0 });
     i.kick = setPieceKick(taker, s, this.geo, this.param(taker.team), this.rng, kick);
   }

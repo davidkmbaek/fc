@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { DEBUG } from '../config';
+import { SCENE_KEYS } from './keys';
 
-export const DEBUG_OVERLAY_KEY = 'DebugOverlay';
+export const DEBUG_OVERLAY_KEY = SCENE_KEYS.DEBUG_OVERLAY;
 
 /** 오버레이가 매 갱신마다 읽어 가는 값 */
 export interface DebugInfo {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { MATCH } from '../config';
+import { DIFFICULTY, MATCH } from '../config';
+import { MatchAi } from './ai/matchAi';
 import { runHeadlessMatch } from './headless';
 import { createIntent, type KickIntent, type PlayerIntent } from './intent';
 import type { PlayerState } from './player';
@@ -199,4 +200,21 @@ describe('AI 대 AI 정식 경기 (4단계 완료 조건)', () => {
     },
     FULL_MATCH_TIMEOUT_MS,
   );
+});
+
+describe('사람 키커가 차지 않을 때', () => {
+  it('HUMAN_TAKE_TIMEOUT 뒤 AI가 대신 찬다', () => {
+    const { sim, intents } = setup();
+    const ai = new MatchAi(DT, 1, sim.geo, [DIFFICULTY.normal, DIFFICULTY.normal]);
+    untilReady(sim, intents);
+    const human = sim.curr.match.takerId; // 사람이 조종한다고 가정 (AI 제외)
+    const tick = (): void => {
+      ai.update(sim.curr, intents, human);
+      sim.step(intents);
+    };
+    for (let i = 0; i < Math.round((MATCH.HUMAN_TAKE_TIMEOUT - 1) / DT); i++) tick();
+    expect(sim.curr.match.phase).toBe('setPiece');
+    for (let i = 0; i < Math.round(2 / DT); i++) tick();
+    expect(sim.curr.match.phase).toBe('inPlay');
+  });
 });

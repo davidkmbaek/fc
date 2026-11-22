@@ -4,6 +4,7 @@ import { angleDiff } from '../sim/math/angle';
 import { lerp } from '../sim/math/scalar';
 import type { PlayerAction, PlayerState, Role } from '../sim/player';
 import { TEAM_HOME } from '../sim/rules';
+import type { TeamColors } from '../ui/teamColors';
 import { mToPx, worldPxX, worldPxY } from './coords';
 
 /** 행동 상태별 모양: 슬라이딩은 앞뒤로 길게, 행동 불가는 반투명, 넘어짐은 더 흐리고 납작하게 */
@@ -26,6 +27,7 @@ export class PlayerView {
     scene: Phaser.Scene,
     team: number,
     role: Role,
+    colors: TeamColors,
     private readonly worldHalfWidth: number,
   ) {
     const r = mToPx(PLAYER.RADIUS);
@@ -35,13 +37,7 @@ export class PlayerView {
 
     const home = team === TEAM_HOME;
     const color =
-      role === 'GK'
-        ? home
-          ? PLAYER_STYLE.HOME_GK_COLOR
-          : PLAYER_STYLE.AWAY_GK_COLOR
-        : home
-          ? PLAYER_STYLE.HOME_COLOR
-          : PLAYER_STYLE.AWAY_COLOR;
+      role === 'GK' ? (home ? colors.homeGk : colors.awayGk) : home ? colors.home : colors.away;
     const disc = scene.add
       .circle(0, 0, r, color)
       .setStrokeStyle(PLAYER_STYLE.OUTLINE_PX, PLAYER_STYLE.OUTLINE_COLOR);

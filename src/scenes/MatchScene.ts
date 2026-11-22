@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { DEBUG, DIFFICULTY, KEYS, PLAYER_STYLE, SIM } from '../config';
+import { DEBUG, DIFFICULTY, KEYS, SIM } from '../config';
 import { enableBallLauncher } from '../debug/ballLauncher';
 import { nextTimeScale } from '../debug/timeScale';
 import { bindDevKeys } from '../input/devKeys';
@@ -21,15 +21,18 @@ import { nearestPlayerId } from '../sim/selection';
 import { Simulation } from '../sim/Simulation';
 import { parseScenarioParams } from '../scenarioParams';
 import { bannerFor } from '../ui/labels';
-import { defaultTeamColors } from '../ui/teamColors';
-import { DEBUG_OVERLAY_KEY, DebugOverlayScene, type DebugInfo } from './DebugOverlayScene';
-import { HUD_KEY, type HudData, HudScene } from './HudScene';
+import { type MatchStartData, teamColorsFor } from '../ui/settings';
+import { DebugOverlayScene, type DebugInfo } from './DebugOverlayScene';
+import { type HudData, HudScene } from './HudScene';
+import { SCENE_KEYS } from './keys';
+import type { PauseData } from './PauseScene';
 
 /**
  * 경기 화면. 고정 스텝으로 시뮬레이션을 돌리고, 이전·현재 상태를 보간해서 그린다.
- * 입력은 스텝마다 의도(intent)로 바꿔 시뮬레이션에 넘긴다.
+ * 입력은 스텝마다 의도(intent)로 바꿔 시뮬레이션에 넘긴다. HUD·디버그 오버레이·일시정지 메뉴는 별도 씬.
  */
 export class MatchScene extends Phaser.Scene {
+  private startData!: MatchStartData;
   private clock!: FixedStepClock;
   private sim!: Simulation;
   private keyboard!: KeyboardState;
@@ -42,21 +45,34 @@ export class MatchScene extends Phaser.Scene {
   private gauge!: PowerGauge;
   private debugWorld!: DebugWorldLayer;
   private marker!: ControlMarker;
+  private menuOpen = false;
   private stepMs = 0;
   /** 직전 프레임의 performance.now() (-1 = 첫 프레임) */
   private lastFrameMs = -1;
 
   constructor() {
-    super('MatchScene');
+    super(SCENE_KEYS.MATCH);
+  }
+
+  /** 타이틀이 넘긴 설정. 없으면 URL 파라미터 */
+  init(data?: Partial<MatchStartData>): void {
+    const params = parseScenarioParams(window.location.search);
+    for (const w of params.warnings) console.warn('[scenario]', w);
+    this.startData = {
+      scenario: data?.scenario ?? params.scenario,
+      seed: data?.seed ?? params.seed,
+      difficulty: data?.difficulty ?? params.difficulty,
+      homeColor: data?.homeColor ?? 0,
+    };
   }
 
   create(): void {
+    const st = this.startData;
     this.clock = new FixedStepClock(SIM.DT, SIM.MAX_STEPS_PER_FRAME);
-    const params = parseScenarioParams(window.location.search);
-    for (const w of params.warnings) console.warn('[scenario]', w);
-    this.sim = new Simulation(SIM.DT, params.seed, params.scenario);
+    this.sim = new Simulation(SIM.DT, st.seed, st.scenario);
     this.stepMs = 0;
     this.lastFrameMs = -1;
+    this.menuOpen = false;
 
     this.keyboard = new KeyboardState(Object.values(KEYS));
     this.intents = this.sim.curr.players.map(() => createIntent());
@@ -64,38 +80,44 @@ export class MatchScene extends Phaser.Scene {
     const startId = nearestPlayerId(this.sim.curr.players, TEAM_HOME, ball.x, ball.y);
     this.human = new HumanSide(this.keyboard, SIM.DT, TEAM_HOME, startId, this.sim.curr);
     this.ai = this.sim.scenario.ai
-      ? new MatchAi(SIM.DT, params.seed, this.sim.geo, [
-          DIFFICULTY.normal,
-          DIFFICULTY[params.difficulty],
-        ])
+      ? new MatchAi(SIM.DT, st.seed, this.sim.geo, [DIFFICULTY.normal, DIFFICULTY[st.difficulty]])
       : null;
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.keyboard.destroy());
 
+    const colors = teamColorsFor(st.homeColor);
     const geo = this.sim.geo;
     createPitchImage(this, geo);
     createGoalLayers(this, geo);
     this.ballView = new BallView(this);
     this.playerViews = this.sim.curr.players.map(
-      (p) => new PlayerView(this, p.team, p.role, geo.worldHalfWidth),
+      (p) => new PlayerView(this, p.team, p.role, colors, geo.worldHalfWidth),
     );
     this.gauge = new PowerGauge(this);
     this.debugWorld = new DebugWorldLayer(this);
-    this.marker = new ControlMarker(this, this.cameras.main, PLAYER_STYLE.HOME_COLOR);
+    this.marker = new ControlMarker(this, this.cameras.main, colors.home);
     this.camera = new MatchCamera(this.cameras.main, geo);
     this.camera.snapTo(this.sim.curr.ball.x, this.sim.curr.ball.y);
 
     const hud: HudData = {
       getState: () => this.sim.curr,
       getControlledId: () => this.human.controlledId,
-      colors: defaultTeamColors(),
+      colors,
     };
-    this.scene.launch(HUD_KEY, hud);
+    this.scene.launch(SCENE_KEYS.HUD, hud);
     this.setupDebugTools();
-    this.pauseOnFocusLoss();
+    this.setupPause();
 
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.keyboard.destroy();
+      for (const k of [SCENE_KEYS.HUD, SCENE_KEYS.DEBUG_OVERLAY, SCENE_KEYS.PAUSE]) {
+        this.scene.stop(k);
+      }
+    });
     if (import.meta.env.DEV) {
       enableBallLauncher(this, (x, y, lofted) => this.sim.requestLaunch(x, y, lofted));
-      void import('../debug/tuningPanel').then((m) => m.createTuningPanel(this.clock));
+      void import('../debug/tuningPanel').then((m) => {
+        const dispose = m.createTuningPanel(this.clock);
+        this.events.once(Phaser.Scenes.Events.SHUTDOWN, dispose);
+      });
     }
   }
 
@@ -139,7 +161,7 @@ export class MatchScene extends Phaser.Scene {
       this.gauge.update(mx, my, this.human.input.charge);
       this.marker.update(mx, my);
     }
-    const overlay = this.scene.get(DEBUG_OVERLAY_KEY);
+    const overlay = this.scene.get(SCENE_KEYS.DEBUG_OVERLAY);
     this.debugWorld.update(curr, overlay instanceof DebugOverlayScene && overlay.isOpen);
 
     const bx = lerp(prev.ball.x, curr.ball.x, alpha);
@@ -149,7 +171,7 @@ export class MatchScene extends Phaser.Scene {
 
   /** 시뮬레이션 이벤트를 HUD에 전달 (구독만, 상태는 바꾸지 않음) */
   private handleEvents(): void {
-    const hud = this.scene.get(HUD_KEY);
+    const hud = this.scene.get(SCENE_KEYS.HUD);
     for (const e of this.sim.drainEvents()) {
       if (e.type === 'ballReset') this.camera.snapTo(this.sim.curr.ball.x, this.sim.curr.ball.y);
       const banner = bannerFor(e);
@@ -157,20 +179,55 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
+  /** Esc 또는 창 포커스를 잃으면 일시정지 메뉴 (CLAUDE.md "탭 전환") */
+  private setupPause(): void {
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.code === 'Escape' && !e.repeat) this.openPause();
+    };
+    const onBlur = (): void => this.openPause();
+    window.addEventListener('keydown', onKey);
+    this.game.events.on(Phaser.Core.Events.BLUR, onBlur);
+    this.game.events.on(Phaser.Core.Events.HIDDEN, onBlur);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener('keydown', onKey);
+      this.game.events.off(Phaser.Core.Events.BLUR, onBlur);
+      this.game.events.off(Phaser.Core.Events.HIDDEN, onBlur);
+    });
+  }
+
+  private openPause(): void {
+    if (this.menuOpen) return;
+    this.menuOpen = true;
+    this.clock.paused = true;
+    const data: PauseData = {
+      resume: () => {
+        this.scene.stop(SCENE_KEYS.PAUSE);
+        this.menuOpen = false;
+        this.clock.paused = false;
+      },
+      restart: () => this.scene.restart(this.startData),
+      title: () => this.scene.start(SCENE_KEYS.TITLE),
+    };
+    this.scene.launch(SCENE_KEYS.PAUSE, data);
+  }
+
   private setupDebugTools(): void {
     const getInfo = (): DebugInfo => {
-      const b = this.sim.curr.ball;
-      const p = this.sim.curr.players[this.human.controlledId];
+      const s = this.sim.curr;
+      const b = s.ball;
+      const m = s.match;
+      const p = s.players[this.human.controlledId];
       return {
         fps: this.game.loop.actualFps,
         stepMs: this.stepMs,
-        tick: this.sim.curr.tick,
-        simTime: this.sim.curr.time,
+        tick: s.tick,
+        simTime: s.time,
         timeScale: this.clock.timeScale,
         paused: this.clock.paused,
         extra: [
           `scene  ${this.sim.scenario.id}  seed ${this.sim.seed}`,
-          `match  ${this.sim.curr.match.phase} ${this.sim.curr.match.phase === 'setPiece' ? this.sim.curr.match.restartKind : ''}  ${this.sim.curr.match.scoreHome}:${this.sim.curr.match.scoreAway}  ${this.sim.curr.match.half}H ${this.sim.curr.match.clock.toFixed(0)}s`,
+          `match  ${m.phase} ${m.phase === 'setPiece' ? m.restartKind : ''}  ` +
+            `${m.scoreHome}:${m.scoreAway}  ${m.half}H ${m.clock.toFixed(0)}s`,
           `ball   x ${b.x.toFixed(2)}  y ${b.y.toFixed(2)}  z ${b.z.toFixed(2)}`,
           `       |v| ${Math.hypot(b.vx, b.vy, b.vz).toFixed(2)} m/s  vz ${b.vz.toFixed(2)}`,
           p
@@ -180,15 +237,15 @@ export class MatchScene extends Phaser.Scene {
         ],
       };
     };
-    this.scene.launch(DEBUG_OVERLAY_KEY, { getInfo });
+    this.scene.launch(SCENE_KEYS.DEBUG_OVERLAY, { getInfo });
 
     const unbind = bindDevKeys({
       toggleOverlay: () => {
-        const overlay = this.scene.get(DEBUG_OVERLAY_KEY);
+        const overlay = this.scene.get(SCENE_KEYS.DEBUG_OVERLAY);
         if (overlay instanceof DebugOverlayScene) overlay.toggle();
       },
       togglePause: () => {
-        this.clock.paused = !this.clock.paused;
+        if (!this.menuOpen) this.clock.paused = !this.clock.paused;
       },
       stepOnce: () => this.clock.requestStep(),
       slower: () => {
@@ -199,18 +256,5 @@ export class MatchScene extends Phaser.Scene {
       },
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, unbind);
-  }
-
-  /** 창이 포커스를 잃거나 탭이 가려지면 일시정지 (CLAUDE.md "탭 전환") */
-  private pauseOnFocusLoss(): void {
-    const pause = (): void => {
-      this.clock.paused = true;
-    };
-    this.game.events.on(Phaser.Core.Events.BLUR, pause);
-    this.game.events.on(Phaser.Core.Events.HIDDEN, pause);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.game.events.off(Phaser.Core.Events.BLUR, pause);
-      this.game.events.off(Phaser.Core.Events.HIDDEN, pause);
-    });
   }
 }

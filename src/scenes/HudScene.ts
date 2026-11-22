@@ -4,8 +4,7 @@ import { TEAM_HOME } from '../sim/rules';
 import type { SimState } from '../sim/state';
 import { formatMatchClock, phaseLabel } from '../ui/clock';
 import type { TeamColors } from '../ui/teamColors';
-
-export const HUD_KEY = 'Hud';
+import { SCENE_KEYS } from './keys';
 
 export interface HudData {
   getState: () => SimState;
@@ -31,7 +30,7 @@ export class HudScene extends Phaser.Scene {
   private mapY = 0;
 
   constructor() {
-    super(HUD_KEY);
+    super(SCENE_KEYS.HUD);
   }
 
   init(data: HudData): void {
