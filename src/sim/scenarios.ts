@@ -14,6 +14,8 @@ export function isScenarioId(v: string): v is ScenarioId {
 
 export interface Scenario {
   readonly id: ScenarioId;
+  /** 사람이 조종하지 않는 선수를 AI가 움직이는가 (연습용 시나리오는 상대가 가만히 서 있음) */
+  readonly ai: boolean;
   /** 시작할 때의 선수 목록 (배열 인덱스 = id) */
   createPlayers(geo: PitchGeometry): PlayerState[];
   /** 시작할 때와 골·아웃 뒤: 공(과 필요하면 선수)을 다시 놓는다 */
@@ -39,6 +41,7 @@ function putPlayer(p: PlayerState | undefined, x: number, y: number, facing: num
 const FREEPLAY_START_X = -1.5;
 const freeplay: Scenario = {
   id: 'freeplay',
+  ai: false,
   createPlayers: () => [createPlayer(0, TEAM_HOME, FREEPLAY_START_X, 0, 0)],
   place(ball) {
     copyBall(ball, createBall(0, 0));
@@ -49,6 +52,7 @@ const freeplay: Scenario = {
 const PENALTY_RUNUP = 2;
 const penalty: Scenario = {
   id: 'penalty',
+  ai: false,
   createPlayers: (geo) => [createPlayer(0, TEAM_HOME, geo.penaltySpotX - PENALTY_RUNUP, 0, 0)],
   place(ball, players, geo) {
     copyBall(ball, createBall(geo.penaltySpotX, 0));
@@ -57,13 +61,14 @@ const penalty: Scenario = {
 };
 
 /**
- * 5:5 킥오프 (2단계: 상대는 가만히 서 있음). 홈(id 0~4)은 +x로 공격, 원정(id 5~9)은 -x.
+ * 5:5 킥오프: 사람 1명 + 우리 팀 AI 4명 vs AI 5명. 홈(id 0~4)은 +x로 공격, 원정(id 5~9)은 -x.
  * 홈 공격수가 공 옆에서 킥오프. 골·아웃 뒤에는 모두 킥오프 자리로.
  */
 /** 킥오프하는 선수는 공 바로 뒤 (KICK_RADIUS 안이라 바로 패스할 수 있다) */
 const KICKOFF_TAKER_X = -0.7;
 const team: Scenario = {
   id: 'team',
+  ai: true,
   createPlayers: () => [...createTeam(TEAM_HOME, 1, 0), ...createTeam(TEAM_AWAY, -1, TEAM_SIZE)],
   place(ball, players) {
     copyBall(ball, createBall(0, 0));
@@ -84,6 +89,7 @@ const team: Scenario = {
 const TACKLE_CARRIER_X = 6;
 const tackle: Scenario = {
   id: 'tackle',
+  ai: false,
   createPlayers: () => [
     createPlayer(0, TEAM_HOME, 0, 0, 0, 'DF'),
     createPlayer(1, TEAM_AWAY, TACKLE_CARRIER_X, 0, Math.PI, 'FW'),

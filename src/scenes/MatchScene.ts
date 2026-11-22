@@ -12,6 +12,7 @@ import { MatchCamera } from '../render/MatchCamera';
 import { createGoalLayers, createPitchImage } from '../render/PitchRenderer';
 import { PlayerView } from '../render/PlayerView';
 import { PowerGauge } from '../render/PowerGauge';
+import { MatchAi } from '../sim/ai/matchAi';
 import { createIntent, type PlayerIntent } from '../sim/intent';
 import { FixedStepClock } from '../sim/loop';
 import { lerp } from '../sim/math/scalar';
@@ -32,6 +33,7 @@ export class MatchScene extends Phaser.Scene {
   private sim!: Simulation;
   private keyboard!: KeyboardState;
   private human!: HumanSide;
+  private ai: MatchAi | null = null;
   private intents!: PlayerIntent[];
   private ballView!: BallView;
   private playerViews!: PlayerView[];
@@ -60,6 +62,7 @@ export class MatchScene extends Phaser.Scene {
     const ball = this.sim.curr.ball;
     const startId = nearestPlayerId(this.sim.curr.players, TEAM_HOME, ball.x, ball.y);
     this.human = new HumanSide(this.keyboard, SIM.DT, TEAM_HOME, startId, this.sim.curr);
+    this.ai = this.sim.scenario.ai ? new MatchAi(SIM.DT, params.seed, this.sim.geo) : null;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.keyboard.destroy());
 
     const geo = this.sim.geo;
@@ -94,6 +97,7 @@ export class MatchScene extends Phaser.Scene {
 
     const steps = this.clock.advance(realDt);
     for (let i = 0; i < steps; i++) {
+      this.ai?.update(this.sim.curr, this.intents, this.human.controlledId);
       this.human.beforeStep(this.intents, this.sim.curr);
       this.keyboard.endStep();
       this.sim.step(this.intents);

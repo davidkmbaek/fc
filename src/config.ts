@@ -244,6 +244,67 @@ export const AI = {
   PASS_SAFETY_STEP: 1.5,
   PASS_RECEIVER_ZONE: 1.5,
   PASS_SAFE_MARGIN: 0.6,
+
+  /** 판단 주기 (초). 이동은 매 스텝 적용. 선수별로 엇갈려 판단한다 */
+  DECISION_INTERVAL: 0.15,
+  /** 팀 모드가 바뀐 뒤 반응하기까지 (초, 난이도) */
+  REACTION_TIME: 0.25,
+
+  /** 홈 위치: 공격 시 앞으로(m), 공 x를 따라가는 비율, 폭을 공 쪽으로 좁히는 비율 */
+  ATTACK_PUSH: 12,
+  BALL_FOLLOW_X: 0.4,
+  WIDTH_SQUEEZE: 0.2,
+  /** 홈 위치가 골라인에서 떨어질 최소 거리 (GK 제외, m) */
+  HOME_MARGIN_X: 4,
+
+  /** 이동: 이 거리(m) 안이면 도착, 이 거리 안에서는 감속, 이보다 멀면 스프린트 */
+  ARRIVE_EPS: 0.6,
+  SLOW_RADIUS: 3,
+  SPRINT_DIST: 10,
+
+  /** 슛: 상대 골문까지 이 거리(m) 안에서만 고려, 기대값이 THRESHOLD를 넘으면 찬다 */
+  SHOT_RANGE: 26,
+  SHOT_THRESHOLD: 0.25,
+  /** 슛을 막는 수비수 한 명당 기대값 감소 비율 */
+  SHOT_BLOCKER_PENALTY: 0.35,
+  /** 압박: 상대가 이 시간(초) 안에 공에 닿을 수 있으면 압박받는 중 */
+  PRESSURE_TIME: 0.8,
+  /** 전진 패스로 볼 최소 전진 거리 (m), 받아들일 안전도 점수 */
+  FORWARD_MIN_GAIN: 5,
+  FORWARD_MIN_SAFETY: 0.3,
+  SAFE_PASS_MIN_SAFETY: 0.5,
+  /** 드리블: 앞을 내다보는 거리(m), 방향 후보 각도 범위(°)와 간격(°) */
+  DRIBBLE_LOOKAHEAD: 5,
+  DRIBBLE_SPREAD_DEG: 70,
+  DRIBBLE_STEP_DEG: 17.5,
+
+  /** 압박 선수의 태클: 공까지 STAND_RANGE × 이 비율 안이면 판단마다 이 확률로 태클 */
+  TACKLE_RANGE_FACTOR: 0.8,
+  TACKLE_CHANCE: 0.3,
+  /** 킥 방향 노이즈 최대 (°, 난이도) */
+  KICK_NOISE_DEG: 3,
+  /** 패스를 고려하는 최대 거리 (m, 난이도) */
+  MAX_PASS_DIST: 35,
+  /** 공 소유자가 판단하기 전에 공에 이 비율 × KICK_RADIUS까지 다가간다 */
+  OWNER_APPROACH_FACTOR: 0.85,
+};
+
+/** 헤드리스 시뮬레이션. DESIGN.md §9, §10 */
+export const HEADLESS = {
+  /** 아무도 공을 건드리지 않는 시간이 이보다 길면 정체(오류) */
+  STALL_SECONDS: 10,
+  /** 기본 경기 시간 (초, 시뮬레이션 시간) */
+  MATCH_SECONDS: 300,
+} as const;
+
+/** 골키퍼 AI. DESIGN.md §7 골키퍼 */
+export const AI_GK = {
+  /** 골라인에서 나오는 거리 = 공까지 거리 × OUT_PER_M, MIN_OUT ~ MAX_OUT (m) */
+  OUT_PER_M: 0.08,
+  MIN_OUT: 0.5,
+  MAX_OUT: 4,
+  /** 페널티 에어리어 안의 공이 이 속도(m/s) 미만이면 나가서 처리 (빠른 공은 3.6 다이빙) */
+  CLAIM_MAX_BALL_SPEED: 8,
 };
 
 /** 경기 규칙 */
