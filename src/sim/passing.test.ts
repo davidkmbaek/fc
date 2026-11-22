@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { BALL, DRIBBLE, PASS } from '../config';
+import { BALL, DRIBBLE } from '../config';
 import { createIntent, type KickIntent, type KickType, type PlayerIntent } from './intent';
 import { rollDistance } from './math/rolling';
-import { arriveSpeed, laneSafety, selectPassTarget } from './passing';
+import { arriveSpeed, selectPassTarget } from './passing';
 import { createPlayer, type PlayerState } from './player';
 import { Simulation } from './Simulation';
 
@@ -38,19 +38,6 @@ function kickAndRun(sim: Simulation, intents: PlayerIntent[], k: KickIntent, sec
   return sim.drainEvents();
 }
 
-describe('laneSafety', () => {
-  it('경로에서 멀면 1, 경로 위에 있으면 0', () => {
-    expect(laneSafety(0, 0, 20, 0, [createPlayer(9, 1, 10, 10)])).toBe(1);
-    expect(laneSafety(0, 0, 20, 0, [createPlayer(9, 1, 10, 0)])).toBe(0);
-    const half = laneSafety(0, 0, 20, 0, [createPlayer(9, 1, 10, PASS.LANE_SAFE_DIST / 2)]);
-    expect(half).toBeCloseTo(0.5);
-  });
-
-  it('경로 끝 너머의 상대는 끝점까지 거리로 본다', () => {
-    expect(laneSafety(0, 0, 10, 0, [createPlayer(9, 1, 30, 0)])).toBe(1);
-  });
-});
-
 describe('selectPassTarget', () => {
   const passer = createPlayer(0, 0, 0, 0);
 
@@ -65,8 +52,8 @@ describe('selectPassTarget', () => {
     const players = [
       passer,
       createPlayer(1, 0, 15, 0),
-      createPlayer(2, 0, 15, 5),
-      createPlayer(9, 1, 7, 0), // 1번으로 가는 길을 막음
+      createPlayer(2, 0, 15, 8),
+      createPlayer(9, 1, 7, 0), // 1번으로 가는 길을 막음 (2번 쪽 길은 열려 있음)
     ];
     expect(selectPassTarget(passer, 1, 0, 'pass', players)).toBe(2);
   });

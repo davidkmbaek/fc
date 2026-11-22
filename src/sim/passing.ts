@@ -4,6 +4,7 @@ import type { KickIntent, KickType } from './intent';
 import { degToRad } from './math/angle';
 import { rollSpeedForDistance, rollTime } from './math/rolling';
 import { clamp } from './math/scalar';
+import { passSafety, safetyScore, typicalPassSpeed } from './ai/intercept';
 import type { PitchGeometry } from './pitch';
 import type { PlayerState } from './player';
 import type { Rng } from './rng';
@@ -13,29 +14,6 @@ export function aimDirection(p: PlayerState, kick: KickIntent): { x: number; y: 
   const len = Math.hypot(kick.aimX, kick.aimY);
   if (len > 1e-6) return { x: kick.aimX / len, y: kick.aimY / len };
   return { x: Math.cos(p.facing), y: Math.sin(p.facing) };
-}
-
-/**
- * 간이 패스 안전도 (0 ~ 1): 패스 경로(선분) 위에서 가장 가까운 상대까지의 거리 / LANE_SAFE_DIST.
- * 3.1에서 도달 시간 비교(DESIGN.md §7 passSafety)로 바꾼다.
- */
-export function laneSafety(
-  fx: number,
-  fy: number,
-  tx: number,
-  ty: number,
-  opponents: readonly PlayerState[],
-): number {
-  const dx = tx - fx;
-  const dy = ty - fy;
-  const lenSq = dx * dx + dy * dy;
-  let minD = Infinity;
-  for (const o of opponents) {
-    const t = lenSq > 0 ? clamp(((o.x - fx) * dx + (o.y - fy) * dy) / lenSq, 0, 1) : 0;
-    const d = Math.hypot(o.x - (fx + dx * t), o.y - (fy + dy * t));
-    if (d < minD) minD = d;
-  }
-  return clamp(minD / PASS.LANE_SAFE_DIST, 0, 1);
 }
 
 /**
@@ -65,7 +43,10 @@ export function selectPassTarget(
     const angleScore = 1 - angle / cone;
     const distScore = 1 - Math.min(1, Math.abs(d - PASS.IDEAL_DIST) / PASS.IDEAL_DIST);
     // 로빙은 상대 머리 위로 넘어가므로 경로 안전도를 보지 않는다
-    const safety = type === 'lob' ? 1 : laneSafety(passer.x, passer.y, p.x, p.y, opponents);
+    const safety =
+      type === 'lob'
+        ? 1
+        : safetyScore(passSafety(passer.x, passer.y, p.x, p.y, typicalPassSpeed(d), opponents));
     const score = PASS.W_ANGLE * angleScore + PASS.W_DIST * distScore + PASS.W_SAFETY * safety;
     if (score > bestScore) {
       bestScore = score;

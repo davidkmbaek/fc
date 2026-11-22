@@ -156,12 +156,7 @@ export const PASS = {
   /** 점수 = 각도 × W_ANGLE + 거리 × W_DIST + 안전도 × W_SAFETY (각 항목 0 ~ 1) */
   W_ANGLE: 1.0,
   W_DIST: 0.5,
-  W_SAFETY: 1.5,
-  /**
-   * 간이 안전도(2.2): 상대가 패스 경로에서 이 거리(m) 이상 떨어져 있으면 1.
-   * 3.1에서 도달 시간 비교(passSafety)로 바꾼다.
-   */
-  LANE_SAFE_DIST: 3.0,
+  W_SAFETY: 2.5,
   /**
    * 땅볼 패스가 받는 사람에게 도착할 때 속도 (m/s). 누른 세기(0 ~ 1)로 MIN ~ MAX, 가운데가 DESIGN.md §5의 약 5.
    * DESIGN은 "초기 속도 ±30%"지만 감속 때문에 도착 속도가 크게 흔들려(톡 = 받는 사람 앞에서 멈춤,
@@ -237,6 +232,19 @@ export const SWITCH = {
   /** 우리 팀 패스를 받을 동료로 자동 전환 */
   AUTO_ON_PASS: true,
 } as const;
+
+/** AI. DESIGN.md §7 */
+export const AI = {
+  /** 공 궤적 예측: 간격(초)과 개수 → 0.05 × 60 = 3초 앞까지 */
+  PREDICT_DT: 0.05,
+  PREDICT_SAMPLES: 60,
+  /** 가로채기 지점으로 볼 공 높이 상한 (가슴) */
+  INTERCEPT_MAX_Z: 1.5,
+  /** 패스 안전도: 경로 위 점 간격(m), 받는 사람 앞 제외 구간(m), "안전"으로 보는 여유(초) */
+  PASS_SAFETY_STEP: 1.5,
+  PASS_RECEIVER_ZONE: 1.5,
+  PASS_SAFE_MARGIN: 0.6,
+};
 
 /** 경기 규칙 */
 export const RULES = {
