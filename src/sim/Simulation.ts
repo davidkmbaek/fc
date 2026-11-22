@@ -2,12 +2,20 @@ import { BALL, DRIBBLE, RULES } from '../config';
 import { bounceOffWorldEdge, copyBall, createBall, type BallState, stepBall } from './ball';
 import { collidePlayers } from './collision';
 import { applyLaunch, type LaunchCommand } from './devLaunch';
-import { canKick, collideBallWithPlayer, markTouch, possessorId, tryTouch } from './dribble';
+import {
+  canKick,
+  collideBallWithPlayer,
+  markTouch,
+  possessorId,
+  tryTouch,
+  tryTrap,
+} from './dribble';
 import type { SimEvent } from './events';
 import { collideGoalFrame, collideNets } from './goalFrame';
 import { createIntent, type PlayerIntent } from './intent';
 import { executeShot } from './kick';
 import { detectCrossing } from './lines';
+import { executePass } from './passing';
 import { computePitchGeometry, type PitchGeometry } from './pitch';
 import { clampPlayerToWorld, copyKick, copyPlayer, type PlayerState, stepPlayer } from './player';
 import { Rng } from './rng';
@@ -128,8 +136,13 @@ export class Simulation {
     }
     if (p.kickBuffer > 0) {
       if (canKick(p, b)) {
-        // 2.2에서 패스 종류를 추가한다. 지금은 모든 킥을 슛으로 처리
-        executeShot(b, p, p.kick, attackDir(p.team, s.homeAttackDir), this.geo, this.rng);
+        const k = p.kick;
+        let targetId = -1;
+        if (k.type === 'shot') {
+          executeShot(b, p, k, attackDir(p.team, s.homeAttackDir), this.geo, this.rng);
+        } else {
+          targetId = executePass(b, p, k, s.players, this.geo, this.rng);
+        }
         markTouch(b, p, s.time);
         p.cooldown = DRIBBLE.KICK_COOLDOWN;
         p.kickBuffer = 0;
@@ -137,16 +150,19 @@ export class Simulation {
           type: 'kick',
           tick: s.tick,
           playerId: p.id,
-          kind: p.kick.type,
-          power: p.kick.power,
+          kind: k.type,
+          power: k.power,
+          targetId,
         });
         return;
       }
       p.kickBuffer = Math.max(0, p.kickBuffer - this.dt);
-    } else {
-      // 킥을 기다리는 동안에는 터치하지 않는다 (공이 멀어지지 않게)
+    } else if (!tryTrap(p, b, s.time)) {
+      // 킥을 기다리는 동안에는 받거나 터치하지 않는다 (원터치 킥을 위해, 공이 멀어지지 않게)
       tryTouch(p, intent, b, s.time);
     }
+    // 방금 찬(터치한) 선수의 몸은 그 공과 부딪히지 않는다: 뒤로 하는 패스가 자기 몸에 맞지 않게
+    if (b.lastTouchPlayer === p.id && p.cooldown > 0) return;
     collideBallWithPlayer(b, p, s.time);
   }
 

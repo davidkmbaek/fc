@@ -58,7 +58,8 @@ const penalty: Scenario = {
  * 5:5 킥오프 (2단계: 상대는 가만히 서 있음). 홈(id 0~4)은 +x로 공격, 원정(id 5~9)은 -x.
  * 홈 공격수가 공 옆에서 킥오프. 골·아웃 뒤에는 모두 킥오프 자리로.
  */
-const KICKOFF_TAKER_X = -1.5;
+/** 킥오프하는 선수는 공 바로 뒤 (KICK_RADIUS 안이라 바로 패스할 수 있다) */
+const KICKOFF_TAKER_X = -0.7;
 const team: Scenario = {
   id: 'team',
   createPlayers: () => [...createTeam(TEAM_HOME, 1, 0), ...createTeam(TEAM_AWAY, -1, TEAM_SIZE)],

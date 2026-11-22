@@ -1,4 +1,4 @@
-import { BALL, DRIBBLE, PLAYER } from '../config';
+import { BALL, DRIBBLE, PLAYER, TRAP } from '../config';
 import type { BallState } from './ball';
 import type { PlayerIntent } from './intent';
 import type { PlayerState } from './player';
@@ -88,6 +88,26 @@ export function collideBallWithPlayer(b: BallState, p: PlayerState, time: number
   const j = (1 + DRIBBLE.BODY_RESTITUTION) * vn;
   b.vx -= j * nx;
   b.vy -= j * ny;
+  markTouch(b, p, time);
+  return true;
+}
+
+/**
+ * 공 받기(트래핑): 다른 선수가 찬 공이 컨트롤 범위 안, 가슴 높이(TRAP.MAX_Z) 아래로 오고
+ * 상대 속도가 충분히 느리면 선수 발밑에 멈춰 세운다. 공중 볼은 떨어뜨린다. 받았으면 true.
+ */
+export function tryTrap(p: PlayerState, b: BallState, time: number): boolean {
+  if (b.lastTouchPlayer === p.id) return false;
+  if (b.z >= TRAP.MAX_Z) return false;
+  const dx = b.x - p.x;
+  const dy = b.y - p.y;
+  if (dx * dx + dy * dy >= DRIBBLE.CONTROL_RADIUS * DRIBBLE.CONTROL_RADIUS) return false;
+  if (Math.hypot(b.vx - p.vx, b.vy - p.vy, b.vz) >= DRIBBLE.CONTROL_MAX_REL_SPEED) return false;
+
+  b.vx = p.vx + (b.vx - p.vx) * TRAP.KEEP;
+  b.vy = p.vy + (b.vy - p.vy) * TRAP.KEEP;
+  if (b.vz > 0) b.vz = 0;
+  p.cooldown = Math.max(p.cooldown, TRAP.COOLDOWN);
   markTouch(b, p, time);
   return true;
 }

@@ -139,6 +139,57 @@ export const SHOT = {
   ERROR_PRESSURE_DEG: 3,
 };
 
+/** 패스. DESIGN.md §5 */
+export const PASS = {
+  /** 조준 방향 ± 이 각도 안의 동료가 후보 */
+  AIM_CONE_DEG: 35,
+  MIN_DIST: 3,
+  MAX_DIST_GROUND: 40,
+  MAX_DIST_LOB: 55,
+  /** 점수의 거리 항목: 이 거리에서 최고점 */
+  IDEAL_DIST: 15,
+  /** 점수 = 각도 × W_ANGLE + 거리 × W_DIST + 안전도 × W_SAFETY (각 항목 0 ~ 1) */
+  W_ANGLE: 1.0,
+  W_DIST: 0.5,
+  W_SAFETY: 1.5,
+  /**
+   * 간이 안전도(2.2): 상대가 패스 경로에서 이 거리(m) 이상 떨어져 있으면 1.
+   * 3.1에서 도달 시간 비교(passSafety)로 바꾼다.
+   */
+  LANE_SAFE_DIST: 3.0,
+  /** 땅볼 패스가 받는 사람에게 도착할 때 속도 (m/s) */
+  ARRIVE_SPEED: 5,
+  MIN_SPEED: 6,
+  MAX_SPEED: 22,
+  /** 누른 세기가 계산된 속도·거리에 주는 영향 (±) */
+  POWER_INFLUENCE: 0.3,
+  /** 후보가 없을 때 조준 방향으로 차는 거리 = MIN ~ MAX (power에 비례) */
+  NO_TARGET_DIST_MIN: 8,
+  NO_TARGET_DIST_MAX: 30,
+  /** 방향 오차 최대 (°) */
+  ERROR_DEG: 2,
+  /** 스루패스: 공간에 도착할 때 속도, 받는 사람 앞으로 보내는 최대 거리 (m) */
+  THROUGH_ARRIVE_SPEED: 3,
+  THROUGH_LEAD_MAX: 10,
+  /** 스루패스 앞 거리 = 달리기 속도 × 도착 시간 × 이 값 */
+  THROUGH_LEAD_FACTOR: 0.8,
+  /** 로빙: 체공 시간 = (BASE + 거리 × PER_M) × (0.85 + 0.3 × power) */
+  LOB_TIME_BASE: 0.7,
+  LOB_TIME_PER_M: 0.03,
+  /** 공기 저항으로 짧아지는 만큼 수평 속도를 보정 */
+  LOB_DRAG_COMP: 1.08,
+};
+
+/** 공 받기(트래핑): 다른 선수가 찬 공이 컨트롤 범위에 들어오면 멈춰 세운다 (DESIGN.md §4 몸·가슴 높이까지) */
+export const TRAP = {
+  /** 이 높이 미만이면 받을 수 있다 (발 ~ 가슴) */
+  MAX_Z: 1.5,
+  /** 받은 뒤 선수 대비 공의 상대 속도를 이 비율만 남긴다 */
+  KEEP: 0.15,
+  /** 받은 직후 드리블 터치까지 (초) */
+  COOLDOWN: 0.1,
+};
+
 /** 경기 규칙 */
 export const RULES = {
   /** 골·아웃 후 공을 다시 놓을 때까지 (초). 경기 상태 머신(4.1) 전까지 임시 */
@@ -160,6 +211,8 @@ export const DEV_LAUNCH = {
 export const TUNABLES: Record<string, Record<string, number>> = {
   PLAYER,
   DRIBBLE,
+  PASS,
+  TRAP,
   SHOT,
   BALL,
   GOAL_PHYSICS,

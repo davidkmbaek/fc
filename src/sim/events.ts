@@ -19,5 +19,13 @@ export type SimEvent =
       team: number;
     }
   | { type: 'frameHit'; tick: number; part: 'post' | 'crossbar' }
-  | { type: 'kick'; tick: number; playerId: number; kind: KickType; power: number }
+  | {
+      type: 'kick';
+      tick: number;
+      playerId: number;
+      kind: KickType;
+      power: number;
+      /** 받을 동료 id (-1 = 슛·공간으로) */
+      targetId: number;
+    }
   | { type: 'ballReset'; tick: number };

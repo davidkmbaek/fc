@@ -80,3 +80,51 @@ describe('HumanController — 슛 충전', () => {
     expect(intent.kick?.power).toBe(1);
   });
 });
+
+describe('HumanController — 킥 종류', () => {
+  it('S 패스, W 스루, A 로빙, D 슛', () => {
+    const cases = [
+      [KEYS.PASS, 'pass'],
+      [KEYS.THROUGH, 'through'],
+      [KEYS.LOB, 'lob'],
+      [KEYS.SHOOT, 'shot'],
+    ] as const;
+    for (const [key, type] of cases) {
+      const keys = new FakeKeys();
+      const c = new HumanController(keys, DT);
+      const intent = createIntent();
+      keys.pressed.add(key);
+      c.sample(intent);
+      expect(c.chargingType).toBe(type);
+      keys.pressed.delete(key);
+      c.sample(intent);
+      expect(intent.kick?.type).toBe(type);
+    }
+  });
+
+  it('충전 중에는 처음 누른 버튼만 본다', () => {
+    const keys = new FakeKeys();
+    const c = new HumanController(keys, DT);
+    const intent = createIntent();
+    keys.pressed.add(KEYS.PASS);
+    c.sample(intent);
+    keys.pressed.add(KEYS.SHOOT);
+    c.sample(intent);
+    keys.pressed.delete(KEYS.SHOOT);
+    c.sample(intent);
+    expect(intent.kick).toBeNull();
+    keys.pressed.delete(KEYS.PASS);
+    c.sample(intent);
+    expect(intent.kick?.type).toBe('pass');
+  });
+
+  it('reset()은 충전을 버린다', () => {
+    const keys = new FakeKeys();
+    const c = new HumanController(keys, DT);
+    const intent = createIntent();
+    keys.pressed.add(KEYS.PASS);
+    c.sample(intent);
+    c.reset();
+    expect(c.charge).toBe(0);
+  });
+});
