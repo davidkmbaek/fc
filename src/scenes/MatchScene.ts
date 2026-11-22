@@ -164,6 +164,7 @@ export class MatchScene extends Phaser.Scene {
         paused: this.clock.paused,
         extra: [
           `scene  ${this.sim.scenario.id}  seed ${this.sim.seed}`,
+          `match  ${this.sim.curr.match.phase} ${this.sim.curr.match.phase === 'setPiece' ? this.sim.curr.match.restartKind : ''}  ${this.sim.curr.match.scoreHome}:${this.sim.curr.match.scoreAway}  ${this.sim.curr.match.half}H ${this.sim.curr.match.clock.toFixed(0)}s`,
           `ball   x ${b.x.toFixed(2)}  y ${b.y.toFixed(2)}  z ${b.z.toFixed(2)}`,
           `       |v| ${Math.hypot(b.vx, b.vy, b.vz).toFixed(2)} m/s  vz ${b.vz.toFixed(2)}`,
           p

@@ -36,6 +36,15 @@ export class HumanSide {
   }
 
   beforeStep(intents: PlayerIntent[], s: SimState): void {
+    // 우리 팀 세트피스: 키커를 조종한다
+    const m = s.match;
+    if (m.enabled && m.phase === 'setPiece' && m.restartTeam === this.team && m.takerId >= 0) {
+      const prev = this.control.force(m.takerId);
+      if (prev >= 0) {
+        clearIntent(intents[prev]);
+        this.input.reset();
+      }
+    }
     const intent = intents[this.controlledId];
     if (!intent) return;
     const owner = s.players[possessorId(s.players, s.ball)];

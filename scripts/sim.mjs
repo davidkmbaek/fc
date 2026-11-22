@@ -26,11 +26,13 @@ let failed = 0;
 try {
   const { runHeadlessMatch } = await server.ssrLoadModule('/src/sim/headless.ts');
   const { HEADLESS } = await server.ssrLoadModule('/src/config.ts');
-  const seconds = args.seconds ?? HEADLESS.MATCH_SECONDS;
+  const seconds = args.seconds ?? HEADLESS.MAX_MATCH_SECONDS;
   console.log(
-    `AI 대 AI ${args.matches}경기 × ${seconds}초 (시드 ${args.seed}~, 홈 ${args.home} / 원정 ${args.away})`,
+    `AI 대 AI ${args.matches}경기 (종료 휘슬까지, 상한 ${seconds}초, 시드 ${args.seed}~, 홈 ${args.home} / 원정 ${args.away})`,
   );
-  console.log('seed | 골(홈:원정) | 슛 | 패스 | 태클 | 아웃 | 점유율(홈) | 최장 정지 | 오류');
+  console.log(
+    'seed | 골(홈:원정) | 슛 | 패스 | 태클 | 스로인/코너/골킥 | 점유율(홈) | 최장 정지 | 오류',
+  );
 
   const t0 = performance.now();
   const totals = { goals: 0, shots: 0, passes: 0 };
@@ -48,9 +50,9 @@ try {
         `${r.shots[0]}:${r.shots[1]}`.padStart(5),
         `${r.passes[0]}:${r.passes[1]}`.padStart(7),
         String(r.tackles).padStart(5),
-        String(r.outs).padStart(5),
+        `${r.restarts.throwIn}/${r.restarts.cornerKick}/${r.restarts.goalKick}`.padStart(15),
         `${(r.possession[0] * 100).toFixed(0)}%`.padStart(10),
-        `${r.longestIdle.toFixed(1)}s`.padStart(9),
+        `${Math.max(r.longestIdle, r.longestStoppage).toFixed(1)}s`.padStart(9),
         r.errors.join(', ') || '-',
       ].join(' | '),
     );

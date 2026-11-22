@@ -21,6 +21,10 @@ export function bannerFor(e: SimEvent): { text: string; small: boolean } | null 
       return { text: `${RESTART_NAMES[e.restart]} — ${teamName(e.team)}`, small: false };
     case 'frameHit':
       return { text: e.part === 'post' ? '골포스트!' : '크로스바!', small: true };
+    case 'whistle':
+      if (e.kind === 'kickOff')
+        return { text: e.half === 1 ? '전반 시작' : '후반 시작', small: false };
+      return { text: e.kind === 'halfTime' ? '하프타임' : '경기 종료', small: false };
     case 'save':
       return { text: e.kind === 'catch' ? '선방! (캐치)' : '선방! (펀칭)', small: true };
     case 'tackle':

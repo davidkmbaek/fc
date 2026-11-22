@@ -43,6 +43,11 @@ export class TeamControl {
     return this.setControlled(next);
   }
 
+  /** 세트피스 키커처럼 규칙이 정한 선수로 바꾼다. 바뀌었으면 이전 선수 id, 아니면 -1 */
+  force(id: number): number {
+    return this.setControlled(id);
+  }
+
   private isTeammate(s: SimState, id: number): boolean {
     return s.players[id]?.team === this.team;
   }

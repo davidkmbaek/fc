@@ -26,9 +26,10 @@ export function selectPassTarget(
   aimY: number,
   type: KickType,
   players: readonly PlayerState[],
+  maxDistOverride?: number,
 ): number {
   const cone = degToRad(PASS.AIM_CONE_DEG);
-  const maxDist = type === 'lob' ? PASS.MAX_DIST_LOB : PASS.MAX_DIST_GROUND;
+  const maxDist = maxDistOverride ?? (type === 'lob' ? PASS.MAX_DIST_LOB : PASS.MAX_DIST_GROUND);
   const opponents = players.filter((o) => o.team !== passer.team);
   let best = -1;
   let bestScore = -Infinity;
@@ -76,9 +77,10 @@ export function executePass(
   players: readonly PlayerState[],
   geo: PitchGeometry,
   rng: Rng,
+  maxDist?: number,
 ): number {
   const aim = aimDirection(passer, kick);
-  const targetId = selectPassTarget(passer, aim.x, aim.y, kick.type, players);
+  const targetId = selectPassTarget(passer, aim.x, aim.y, kick.type, players, maxDist);
   const target = players[targetId];
 
   let tx: number;
@@ -87,9 +89,11 @@ export function executePass(
     tx = target.x;
     ty = target.y;
   } else {
-    const d =
+    const d = Math.min(
+      maxDist ?? Infinity,
       PASS.NO_TARGET_DIST_MIN +
-      (PASS.NO_TARGET_DIST_MAX - PASS.NO_TARGET_DIST_MIN) * clamp(kick.power, 0, 1);
+        (PASS.NO_TARGET_DIST_MAX - PASS.NO_TARGET_DIST_MIN) * clamp(kick.power, 0, 1),
+    );
     tx = b.x + aim.x * d;
     ty = b.y + aim.y * d;
   }

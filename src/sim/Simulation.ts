@@ -1,76 +1,30 @@
-import { BALL, DRIBBLE, RULES } from '../config';
-import { bounceOffWorldEdge, copyBall, createBall, type BallState, stepBall } from './ball';
+import { BALL, MATCH, RULES } from '../config';
+import { bounceOffWorldEdge, stepBall } from './ball';
 import { collidePlayers } from './collision';
+import { IDLE_INTENT, pushTackle, resolveContacts, type StepContext, startTackle } from './contact';
 import { applyLaunch, type LaunchCommand } from './devLaunch';
-import {
-  canKick,
-  collideBallWithPlayer,
-  markTouch,
-  possessorId,
-  tryTouch,
-  tryTrap,
-} from './dribble';
+import { possessorId } from './dribble';
 import type { SimEvent } from './events';
 import { collideGoalFrame, collideNets } from './goalFrame';
+import { holdBall } from './goalkeeping';
 import { createIntent, type PlayerIntent } from './intent';
-import { executeShot } from './kick';
 import { detectCrossing } from './lines';
-import { executePass } from './passing';
+import { MatchDirector } from './match';
 import { computePitchGeometry, type PitchGeometry } from './pitch';
-import { clampPlayerToWorld, copyKick, copyPlayer, type PlayerState, stepPlayer } from './player';
+import { clampPlayerToWorld, stepPlayer } from './player';
 import { Rng } from './rng';
-import { attackDir, restartFor, scoringTeam } from './rules';
+import { restartFor, scoringTeam } from './rules';
 import { getScenario, type Scenario, type ScenarioId } from './scenarios';
-import { standTackle, startSlide, stepSlide, tickAction } from './tackle';
-import { goalkeeperHands, holdBall } from './goalkeeping';
+import { copyState, createState, type SimState, snapPrev } from './state';
+import { stepSlide, tickAction } from './tackle';
 
-export interface SimState {
-  /** 지금까지 실행한 스텝 수 */
-  tick: number;
-  /** 시뮬레이션 시간 (초) = tick × dt */
-  time: number;
-  ball: BallState;
-  /** 선수들. 배열 인덱스 = 선수 id */
-  players: PlayerState[];
-  /** 홈 팀 공격 방향 (전반 +1). 진영 교체는 4.2에서 */
-  homeAttackDir: 1 | -1;
-  /** 골·아웃 후 공을 다시 놓을 tick (-1 = 경기 진행 중) */
-  ballResetTick: number;
-}
-
-function createState(scenario: Scenario, geo: PitchGeometry): SimState {
-  const s: SimState = {
-    tick: 0,
-    time: 0,
-    ball: createBall(),
-    players: scenario.createPlayers(geo),
-    homeAttackDir: 1,
-    ballResetTick: -1,
-  };
-  scenario.place(s.ball, s.players, geo);
-  return s;
-}
-
-/** 핫 루프에서 객체를 만들지 않도록 필드를 복사한다 */
-function copyState(dst: SimState, src: SimState): void {
-  dst.tick = src.tick;
-  dst.time = src.time;
-  copyBall(dst.ball, src.ball);
-  for (let i = 0; i < src.players.length; i++) {
-    const d = dst.players[i];
-    const p = src.players[i];
-    if (d && p) copyPlayer(d, p);
-  }
-  dst.homeAttackDir = src.homeAttackDir;
-  dst.ballResetTick = src.ballResetTick;
-}
-
-const IDLE_INTENT: Readonly<PlayerIntent> = createIntent();
+export type { SimState } from './state';
 
 /**
  * 시뮬레이션 전체 상태와 한 스텝 진행. Phaser 없이 Node에서 돌아간다.
  * 렌더러는 `prev`와 `curr`를 읽어 보간할 뿐 바꾸지 않는다.
  * 외부 명령(개발 도구 등)은 바로 적용하지 않고 다음 스텝 시작에 적용한다(결정성).
+ * 경기 규칙을 쓰는 시나리오(match)는 MatchDirector가 단계·세트피스·시계를 맡는다.
  */
 export class Simulation {
   readonly rng: Rng;
@@ -78,6 +32,8 @@ export class Simulation {
   readonly scenario: Scenario;
   readonly prev: SimState;
   readonly curr: SimState;
+  private readonly director: MatchDirector;
+  private readonly effective: PlayerIntent[];
   private launch: LaunchCommand | null = null;
   private readonly events: SimEvent[] = [];
 
@@ -90,6 +46,8 @@ export class Simulation {
     this.scenario = getScenario(scenarioId);
     this.prev = createState(this.scenario, this.geo);
     this.curr = createState(this.scenario, this.geo);
+    this.director = new MatchDirector(this.geo, dt);
+    this.effective = this.curr.players.map(() => createIntent());
   }
 
   /** 개발 도구: 다음 스텝에 공을 (x, y)로 보낸다. lofted면 공중 볼 */
@@ -106,6 +64,7 @@ export class Simulation {
   step(intents: readonly PlayerIntent[] = []): void {
     copyState(this.prev, this.curr);
     const s = this.curr;
+    const m = s.match;
     s.tick++;
     s.time = s.tick * this.dt;
 
@@ -115,14 +74,28 @@ export class Simulation {
       this.launch = null;
     }
 
+    let use: readonly PlayerIntent[] = intents;
+    if (m.enabled) {
+      let teleported = this.director.beginStep(s, this.events);
+      teleported = this.director.effectiveIntents(s, intents, this.effective) || teleported;
+      if (teleported) snapPrev(this.prev, s);
+      use = this.effective;
+    }
+
+    const ctx: StepContext = { s, geo: this.geo, rng: this.rng, dt: this.dt, events: this.events };
+    if (m.enabled && m.phase === 'setPiece' && m.restartKind === 'throwIn') {
+      ctx.passMaxDist = MATCH.THROW_MAX_DIST;
+      ctx.noShots = true;
+    }
+
     const owner = possessorId(s.players, s.ball);
     for (const p of s.players) {
-      const intent = intents[p.id] ?? IDLE_INTENT;
+      const intent = use[p.id] ?? IDLE_INTENT;
       tickAction(p, this.dt);
-      if (p.action === 'none' && intent.tackle) this.startTackle(p, intent);
+      if (p.action === 'none' && intent.tackle) startTackle(ctx, p, intent);
       if (p.action === 'slide') {
         const r = stepSlide(p, s.players, s.ball, this.dt, s.time);
-        if (r) this.pushTackle(p, 'slide', r === 'ball' ? 'won' : 'fall');
+        if (r) pushTackle(ctx, p, 'slide', r === 'ball' ? 'won' : 'fall');
       } else {
         // 행동 불가(stunned·fallen) 중에는 입력을 무시하고 멈춘다
         stepPlayer(p, p.action === 'none' ? intent : IDLE_INTENT, this.dt, p.id === owner);
@@ -131,107 +104,20 @@ export class Simulation {
       p.cooldown = Math.max(0, p.cooldown - this.dt);
     }
     collidePlayers(s.players, owner);
-    for (const p of s.players) {
-      const b = s.ball;
-      const save = goalkeeperHands(p, b, this.ownGoalX(p), this.geo, this.rng, s.time);
-      if (save) {
-        this.events.push({ type: 'save', tick: s.tick, playerId: p.id, kind: save });
-        continue;
-      }
-      if (b.heldBy >= 0) {
-        // 골키퍼가 든 공: 들고 있는 골키퍼만 배급(킥)할 수 있다
-        if (b.heldBy === p.id) this.distribute(p, intents[p.id] ?? IDLE_INTENT);
-        continue;
-      }
-      if (p.action === 'none') this.playerBallContact(p, intents[p.id] ?? IDLE_INTENT);
-      else collideBallWithPlayer(b, p, s.time);
-    }
+
+    const before = this.events.length;
+    resolveContacts(ctx, use, (p) => !m.enabled || this.director.canTouch(s, p));
+    if (m.enabled) this.director.afterContacts(s, this.events.slice(before));
 
     const holder = s.players[s.ball.heldBy];
-    if (holder && holder.action === 'none') holdBall(s.ball, holder, this.dt);
+    if (m.enabled && this.director.lockBall(s)) {
+      // 세트피스: 키커가 차기 전까지 공은 재시작 지점에 있다
+    } else if (holder && holder.action === 'none') holdBall(s.ball, holder, this.dt);
     else {
       s.ball.heldBy = -1;
       this.stepBallWithCollisions();
     }
     bounceOffWorldEdge(s.ball, this.geo.worldHalfLength, this.geo.worldHalfWidth);
-  }
-
-  private startTackle(p: PlayerState, intent: PlayerIntent): void {
-    const s = this.curr;
-    p.kickBuffer = 0;
-    if (intent.tackle === 'stand') {
-      this.pushTackle(p, 'stand', standTackle(p, s.players, s.ball, this.rng, s.time));
-    } else {
-      startSlide(p, intent.moveX, intent.moveY);
-    }
-  }
-
-  private pushTackle(
-    p: PlayerState,
-    kind: 'stand' | 'slide',
-    result: 'won' | 'failed' | 'fall',
-  ): void {
-    this.events.push({ type: 'tackle', tick: this.curr.tick, playerId: p.id, kind, result });
-  }
-
-  private ownGoalX(p: PlayerState): number {
-    return -attackDir(p.team, this.curr.homeAttackDir) * this.geo.halfLength;
-  }
-
-  /** 골키퍼 배급: 든 공을 내려놓고 킥 의도대로 찬다(던지기·차기) */
-  private distribute(p: PlayerState, intent: PlayerIntent): void {
-    if (!intent.kick) return;
-    const b = this.curr.ball;
-    b.heldBy = -1;
-    b.z = 0;
-    p.kickBuffer = 0;
-    copyKick(p.kick, intent.kick);
-    p.kickBuffer = DRIBBLE.KICK_BUFFER;
-    this.playerBallContact(p, IDLE_INTENT);
-  }
-
-  /** 킥 → 받기·드리블 터치 → 몸 충돌 순으로 선수와 공의 접촉을 처리한다 */
-  private playerBallContact(p: PlayerState, intent: PlayerIntent): void {
-    const s = this.curr;
-    const b = s.ball;
-    if (intent.kick) {
-      copyKick(p.kick, intent.kick);
-      p.kickBuffer = DRIBBLE.KICK_BUFFER;
-    }
-    if (p.kickBuffer > 0) {
-      if (canKick(p, b)) {
-        const k = p.kick;
-        let targetId = -1;
-        if (k.type === 'shot') {
-          executeShot(b, p, k, attackDir(p.team, s.homeAttackDir), this.geo, this.rng);
-        } else {
-          targetId = executePass(b, p, k, s.players, this.geo, this.rng);
-        }
-        markTouch(b, p, s.time);
-        b.passTarget = targetId;
-        p.cooldown = DRIBBLE.KICK_COOLDOWN;
-        p.kickBuffer = 0;
-        this.events.push({
-          type: 'kick',
-          tick: s.tick,
-          playerId: p.id,
-          kind: k.type,
-          power: k.power,
-          targetId,
-        });
-        return;
-      }
-      // 이 선수에게 오는 패스라면 공이 도착할 때까지 킥을 들고 있는다 (원터치 패스)
-      if (b.passTarget !== p.id || DRIBBLE.ONE_TOUCH_HOLD_FOR_RECEIVER === 0) {
-        p.kickBuffer = Math.max(0, p.kickBuffer - this.dt);
-      }
-    } else if (!tryTrap(p, b, s.time)) {
-      // 킥을 기다리는 동안에는 받거나 터치하지 않는다 (원터치 킥을 위해, 공이 멀어지지 않게)
-      tryTouch(p, intent, b, s.time);
-    }
-    // 방금 찬(터치한) 선수의 몸은 그 공과 부딪히지 않는다: 뒤로 하는 패스가 자기 몸에 맞지 않게
-    if (b.lastTouchPlayer === p.id && p.cooldown > 0) return;
-    collideBallWithPlayer(b, p, s.time);
   }
 
   /** 공을 서브스텝으로 나눠 움직이며 골대 충돌과 라인 판정을 한다 */
@@ -248,9 +134,14 @@ export class Simulation {
       if (hit) this.events.push({ type: 'frameHit', tick: s.tick, part: hit });
       collideNets(b, px, py, pz, this.geo);
 
-      if (s.ballResetTick >= 0) continue; // 이미 골·아웃 처리 중
       const c = detectCrossing(px, py, pz, b, this.geo);
       if (!c) continue;
+      if (s.match.enabled) {
+        this.director.onCrossing(s, c, this.events);
+        continue;
+      }
+      // 연습 시나리오: 판정만 하고 잠시 뒤 시나리오대로 재배치
+      if (s.ballResetTick >= 0) continue;
       s.ballResetTick = s.tick + Math.round(RULES.BALL_RESET_DELAY / this.dt);
       if (c.kind === 'goal') {
         const team = scoringTeam(c.side, s.homeAttackDir);
@@ -262,18 +153,12 @@ export class Simulation {
     }
   }
 
-  /** 골·아웃 뒤 시나리오대로 공(과 선수)을 다시 놓는다 (경기 상태 머신(4.1) 전까지) */
+  /** (연습 시나리오) 골·아웃 뒤 시나리오대로 공(과 선수)을 다시 놓는다 */
   private resetBall(): void {
     const s = this.curr;
     this.scenario.place(s.ball, s.players, this.geo);
     s.ballResetTick = -1;
-    // 순간이동이므로 보간하지 않도록 prev도 맞춘다
-    copyBall(this.prev.ball, s.ball);
-    for (let i = 0; i < s.players.length; i++) {
-      const d = this.prev.players[i];
-      const p = s.players[i];
-      if (d && p) copyPlayer(d, p);
-    }
+    snapPrev(this.prev, s);
     this.events.push({ type: 'ballReset', tick: s.tick });
   }
 }

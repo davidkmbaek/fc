@@ -299,8 +299,8 @@ export const AI = {
 export const HEADLESS = {
   /** 아무도 공을 건드리지 않는 시간이 이보다 길면 정체(오류) */
   STALL_SECONDS: 10,
-  /** 기본 경기 시간 (초, 시뮬레이션 시간) */
-  MATCH_SECONDS: 300,
+  /** 한 경기의 안전 상한 (초, 시뮬레이션 시간). 정상이면 종료 휘슬(약 전후반 360초 + 멈춘 시간)에서 끝난다 */
+  MAX_MATCH_SECONDS: 900,
 } as const;
 
 /**
@@ -376,6 +376,30 @@ export const AI_GK = {
   DIVE_TRIGGER_TIME: 0.7,
   DIVE_MIN_BALL_SPEED: 8,
 };
+
+/** 경기 흐름. DESIGN.md §6 */
+export const MATCH = {
+  /** 반(전·후반) 길이: 실제 시간(초). 화면 시계는 45분으로 환산. InPlay일 때만 흐른다 */
+  HALF_SECONDS: 180,
+  DISPLAY_HALF_MINUTES: 45,
+  /** 경기 시작 전 대기, 골 세리머니, 아웃 후, 하프타임 (초) */
+  PRE_MATCH: 1.5,
+  GOAL_CELEBRATION: 3,
+  OUT_PAUSE: 1,
+  HALF_TIME_PAUSE: 3,
+  /** 세트피스: 위치로 이동하는 최대 시간(초, 이후 순간이동), 도착으로 보는 거리(m) */
+  SETUP_MAX: 2,
+  READY_EPS: 0.8,
+  /** AI 키커는 준비가 끝나고 이 시간(초) 뒤에 찬다 */
+  AI_TAKE_DELAY: 1.0,
+  /** 키커가 공 뒤에 서는 거리 (m, 킥 거리 0.9 안) */
+  TAKER_GAP: 0.6,
+  /** 킥오프·코너킥·골킥 때 상대가 공에서 떨어져야 하는 거리, 스로인은 THROW_MIN_DIST */
+  OPP_MIN_DIST: 9.15,
+  THROW_MIN_DIST: 3,
+  /** 스로인 최대 거리 (m, 손으로 던지는 짧은 패스로 단순화) */
+  THROW_MAX_DIST: 25,
+} as const;
 
 /** 경기 규칙 */
 export const RULES = {

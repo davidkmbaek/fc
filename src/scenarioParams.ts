@@ -5,8 +5,8 @@ function isDifficulty(v: string): v is Difficulty {
   return Object.hasOwn(DIFFICULTY, v);
 }
 
-/** URL에 시나리오가 없을 때 (2단계부터 5:5) */
-export const DEFAULT_SCENARIO: ScenarioId = 'team';
+/** URL에 시나리오가 없을 때 (4단계부터 정식 경기) */
+export const DEFAULT_SCENARIO: ScenarioId = 'match';
 
 export interface ScenarioParams {
   scenario: ScenarioId;
@@ -18,7 +18,7 @@ export interface ScenarioParams {
 }
 
 /**
- * URL 쿼리 `?scenario=team|freeplay|penalty|tackle&seed=123&difficulty=easy|normal|hard`를 읽는다. DESIGN.md §9
+ * URL 쿼리 `?scenario=match|team|freeplay|penalty|tackle&seed=123&difficulty=easy|normal|hard`를 읽는다. DESIGN.md §9
  * 모르는 시나리오·잘못된 시드는 기본값(DEFAULT_SCENARIO, SIM.DEFAULT_SEED)으로 바꾸고 경고를 남긴다.
  */
 export function parseScenarioParams(search: string): ScenarioParams {

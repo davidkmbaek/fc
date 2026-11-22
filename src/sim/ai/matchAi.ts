@@ -1,4 +1,4 @@
-import { AI, type AiParams, DRIBBLE, TACKLE } from '../../config';
+import { AI, type AiParams, DRIBBLE, MATCH, TACKLE } from '../../config';
 import { possessorId } from '../dribble';
 import type { KickIntent, PlayerIntent } from '../intent';
 import { Rng } from '../rng';
@@ -10,6 +10,7 @@ import { goalkeeper, goalkeeperDistribute } from './goalkeeper';
 import { type Intercept, interceptPoint } from './intercept';
 import { decideOwner } from './ownerDecision';
 import { BallPrediction } from './predict';
+import { setPieceKick } from './setPiece';
 import { clearActions, moveTo, stop } from './steer';
 import { assignMarks, markSpot } from './marking';
 import { bestSupportSpot } from './support';
@@ -72,6 +73,10 @@ export class MatchAi {
 
   /** excludeId: 사람이 조종하는 선수 (-1 = 없음) */
   update(s: SimState, intents: PlayerIntent[], excludeId: number): void {
+    if (s.match.enabled && s.match.phase !== 'inPlay') {
+      this.outOfPlay(s, intents, excludeId);
+      return;
+    }
     const b = s.ball;
     this.pred.update(b);
     for (const team of [0, 1]) this.updateTeam(s, team);
@@ -128,6 +133,21 @@ export class MatchAi {
       return;
     }
     moveTo(i, p, this.home.x, this.home.y, true);
+  }
+
+  /** 경기가 멈춘 동안: 움직임은 MatchDirector가 정하고, AI는 세트피스 킥만 한다 */
+  private outOfPlay(s: SimState, intents: PlayerIntent[], excludeId: number): void {
+    for (const p of s.players) {
+      const i = intents[p.id];
+      if (i && p.id !== excludeId) clearActions(i);
+    }
+    const m = s.match;
+    if (m.phase !== 'setPiece' || !m.ready || s.time - m.readyAt < MATCH.AI_TAKE_DELAY) return;
+    const taker = s.players[m.takerId];
+    const i = intents[m.takerId];
+    if (!taker || !i || taker.id === excludeId) return;
+    const kick = (this.kicks[taker.id] ??= { type: 'pass', power: 0, aimX: 0, aimY: 0 });
+    i.kick = setPieceKick(taker, s, this.geo, this.param(taker.team), this.rng, kick);
   }
 
   private param(team: number): AiParams {

@@ -37,4 +37,5 @@ export type SimEvent =
       result: 'won' | 'failed' | 'fall';
     }
   | { type: 'save'; tick: number; playerId: number; kind: 'catch' | 'parry' }
+  | { type: 'whistle'; tick: number; kind: 'kickOff' | 'halfTime' | 'fullTime'; half: 1 | 2 }
   | { type: 'ballReset'; tick: number };

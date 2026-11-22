@@ -53,8 +53,8 @@ describe('homeSpot', () => {
 });
 
 describe('AI 대 AI (헤드리스)', () => {
-  it('2분 경기: 오류·정체 없이 양 팀 모두 패스하고 공을 소유한다', () => {
-    const r = runHeadlessMatch(11, 120);
+  it('정식 경기: 오류·정체 없이 양 팀 모두 패스하고 공을 소유한다', () => {
+    const r = runHeadlessMatch(11);
     expect(r.errors).toEqual([]);
     expect(r.longestIdle).toBeLessThan(HEADLESS.STALL_SECONDS);
     expect(r.passes[0]).toBeGreaterThan(3);
