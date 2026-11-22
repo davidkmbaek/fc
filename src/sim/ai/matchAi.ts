@@ -11,6 +11,8 @@ import { type Intercept, interceptPoint } from './intercept';
 import { decideOwner } from './ownerDecision';
 import { BallPrediction } from './predict';
 import { clearActions, moveTo, stop } from './steer';
+import { assignMarks, markSpot } from './marking';
+import { bestSupportSpot } from './support';
 import { homeSpot, type TeamMode, teamMode } from './teamState';
 import { timeToReach } from './timeToReach';
 
@@ -46,6 +48,12 @@ export class MatchAi {
   private readonly dribbleDirs: { angle: number }[] = [];
   private readonly home = { x: 0, y: 0 };
   private readonly ip: Intercept = { x: 0, y: 0, t: 0 };
+  /** 선수별 지원 위치 (SUPPORT_INTERVAL마다 갱신) */
+  private readonly support: { x: number; y: number }[] = [];
+  private readonly supportSteps: number;
+  /** marks[수비수 id] = 마크할 상대 id (-1 = 없음). 수비 모드인 팀만 */
+  private readonly marks: number[] = [];
+  private readonly spot = { x: 0, y: 0 };
 
   constructor(
     dt: number,
@@ -55,6 +63,7 @@ export class MatchAi {
     this.rng = new Rng((seed ^ AI_SEED_SALT) >>> 0);
     this.pred = new BallPrediction(dt);
     this.decisionSteps = Math.max(1, Math.round(AI.DECISION_INTERVAL / dt));
+    this.supportSteps = Math.max(1, Math.round(AI.SUPPORT_INTERVAL / dt));
   }
 
   /** excludeId: 사람이 조종하는 선수 (-1 = 없음) */
@@ -84,11 +93,37 @@ export class MatchAi {
       else if (p.role === 'GK') goalkeeper(p, s, dir, this.geo, i, this.ip, this.pred.samples);
       else if (brain.mode === 'loose' && brain.chaserId === p.id) this.chase(p, i);
       else if (brain.mode === 'defend' && brain.presserId === p.id) this.press(p, s, i, decide);
-      else {
-        homeSpot(p, brain.mode, b, dir, this.geo, this.home);
-        moveTo(i, p, this.home.x, this.home.y, true);
-      }
+      else this.offBall(p, s, brain.mode, dir, owner, i);
     }
+  }
+
+  /** 공과 직접 관계없는 선수: 공격 중이면 지원 위치, 수비 중이면 마크, 아니면 홈 위치 */
+  private offBall(
+    p: PlayerState,
+    s: SimState,
+    mode: TeamMode,
+    dir: 1 | -1,
+    ownerId: number,
+    i: PlayerIntent,
+  ): void {
+    const b = s.ball;
+    homeSpot(p, mode, b, dir, this.geo, this.home);
+    const owner = s.players[ownerId];
+    if (mode === 'attack' && owner && owner.team === p.team) {
+      const sp = (this.support[p.id] ??= { x: this.home.x, y: this.home.y });
+      if ((s.tick + p.id) % this.supportSteps === 0) {
+        bestSupportSpot(owner, this.home.x, this.home.y, dir, s.players, this.geo, sp);
+      }
+      moveTo(i, p, sp.x, sp.y, true);
+      return;
+    }
+    const marked = s.players[this.marks[p.id] ?? -1];
+    if (mode === 'defend' && marked) {
+      markSpot(marked, -dir * this.geo.halfLength, this.spot);
+      moveTo(i, p, this.spot.x, this.spot.y, true);
+      return;
+    }
+    moveTo(i, p, this.home.x, this.home.y, true);
   }
 
   /** 팀 모드(반응 시간 적용)와 공 쫓을 선수·압박할 선수를 정한다 */
@@ -120,6 +155,11 @@ export class MatchAi {
         bestPress = t;
         brain.presserId = p.id;
       }
+    }
+    if (brain.mode === 'defend') {
+      const ownGoalX = -attackDir(team, s.homeAttackDir) * this.geo.halfLength;
+      const ownerId = possessorId(s.players, s.ball);
+      assignMarks(s.players, team, ownGoalX, [brain.presserId, ownerId], this.marks);
     }
   }
 

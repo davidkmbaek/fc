@@ -287,6 +287,22 @@ export const AI = {
   MAX_PASS_DIST: 35,
   /** 공 소유자가 판단하기 전에 공에 이 비율 × KICK_RADIUS까지 다가간다 */
   OWNER_APPROACH_FACTOR: 0.85,
+
+  /** 지원 위치: 다시 계산하는 주기(초), 홈 위치 주변 격자 반경·간격(m) */
+  SUPPORT_INTERVAL: 0.5,
+  SUPPORT_RADIUS: 12,
+  SUPPORT_GRID_STEP: 4,
+  /** 점수 = 안전도 × W_SAFETY + 슛 가능성 × W_SHOT + 이상적 거리 × W_DIST - 홈에서 거리 / HOME_NORM */
+  SUPPORT_IDEAL_DIST: 15,
+  SUPPORT_W_SAFETY: 1.0,
+  SUPPORT_W_SHOT: 1.5,
+  SUPPORT_W_DIST: 0.6,
+  SUPPORT_HOME_NORM: 20,
+
+  /** 마크: 상대와 우리 골문 사이, 상대에게서 이 거리(m) */
+  MARK_DIST: 2.0,
+  /** 이보다 우리 골문에서 먼(m) 상대는 마크하지 않는다 (홈 위치 유지) */
+  MARK_MAX_GOAL_DIST: 45,
 };
 
 /** 헤드리스 시뮬레이션. DESIGN.md §9, §10 */
