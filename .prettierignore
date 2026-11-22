@@ -1,0 +1,6 @@
+dist/
+coverage/
+node_modules/
+package-lock.json
+# 문서는 손으로 쓴 형식을 유지한다 (한글 표 정렬이 크게 바뀌는 것 방지)
+*.md
