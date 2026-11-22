@@ -21,11 +21,14 @@
 
 URL 뒤에 붙여 바로 시작할 수 있다.
 
-- `?scenario=team` — 5:5 킥오프 (기본값)
+- `?scenario=team` — 5:5 경기, 상대는 AI (기본값)
 - `?scenario=freeplay` — 혼자 드리블·슛 연습
 - `?scenario=penalty` — 페널티킥
 - `?scenario=tackle` — 태클 연습
+- `&difficulty=easy|normal|hard` — 상대 AI 난이도 (기본 normal)
 - `&seed=123` — 난수 시드 (같은 시드 + 같은 입력 = 같은 결과)
+
+예: <https://davidkmbaek.github.io/fc/?difficulty=easy>
 
 ## 개발
 
@@ -34,6 +37,7 @@ npm install
 npm run dev     # 개발 서버 (http://localhost:5173/fc/)
 npm run check   # 타입 체크 + 린트 + 포맷 + 테스트
 npm run build   # 프로덕션 빌드
+npm run sim -- --matches 20 --seed 1   # 브라우저 없이 AI 대 AI 경기 통계
 ```
 
 설계 문서는 [docs/DESIGN.md](docs/DESIGN.md), 진행 상황은 [docs/PROGRESS.md](docs/PROGRESS.md)에 있다.
