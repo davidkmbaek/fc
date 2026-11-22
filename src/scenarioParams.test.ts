@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest';
+import { SIM } from './config';
+import { parseScenarioParams } from './scenarioParams';
+
+describe('parseScenarioParams', () => {
+  it('값이 없으면 freeplay와 기본 시드', () => {
+    expect(parseScenarioParams('')).toEqual({
+      scenario: 'freeplay',
+      seed: SIM.DEFAULT_SEED,
+      warnings: [],
+    });
+  });
+
+  it('scenario와 seed를 읽는다', () => {
+    expect(parseScenarioParams('?scenario=penalty&seed=123')).toMatchObject({
+      scenario: 'penalty',
+      seed: 123,
+      warnings: [],
+    });
+  });
+
+  it('모르는 시나리오·잘못된 시드는 기본값으로 바꾸고 경고한다', () => {
+    const p = parseScenarioParams('?scenario=moon&seed=abc');
+    expect(p.scenario).toBe('freeplay');
+    expect(p.seed).toBe(SIM.DEFAULT_SEED);
+    expect(p.warnings).toHaveLength(2);
+  });
+
+  it('음수·소수 시드는 잘못된 값', () => {
+    expect(parseScenarioParams('?seed=-1').warnings).toHaveLength(1);
+    expect(parseScenarioParams('?seed=1.5').warnings).toHaveLength(1);
+  });
+});

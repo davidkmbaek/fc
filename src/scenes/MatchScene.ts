@@ -15,6 +15,7 @@ import { createIntent, type PlayerIntent } from '../sim/intent';
 import { FixedStepClock } from '../sim/loop';
 import { lerp } from '../sim/math/scalar';
 import { Simulation } from '../sim/Simulation';
+import { parseScenarioParams } from '../scenarioParams';
 import { bannerFor } from '../ui/labels';
 import { DEBUG_OVERLAY_KEY, DebugOverlayScene, type DebugInfo } from './DebugOverlayScene';
 import { HUD_KEY, HudScene } from './HudScene';
@@ -47,7 +48,9 @@ export class MatchScene extends Phaser.Scene {
 
   create(): void {
     this.clock = new FixedStepClock(SIM.DT, SIM.MAX_STEPS_PER_FRAME);
-    this.sim = new Simulation(SIM.DT, SIM.DEFAULT_SEED);
+    const params = parseScenarioParams(window.location.search);
+    for (const w of params.warnings) console.warn('[scenario]', w);
+    this.sim = new Simulation(SIM.DT, params.seed, params.scenario);
     this.stepMs = 0;
     this.lastFrameMs = -1;
 
@@ -129,6 +132,7 @@ export class MatchScene extends Phaser.Scene {
   private handleEvents(): void {
     const hud = this.scene.get(HUD_KEY);
     for (const e of this.sim.drainEvents()) {
+      if (e.type === 'ballReset') this.camera.snapTo(this.sim.curr.ball.x, this.sim.curr.ball.y);
       const banner = bannerFor(e);
       if (banner && hud instanceof HudScene) hud.showBanner(banner.text, banner.small);
     }
@@ -146,6 +150,7 @@ export class MatchScene extends Phaser.Scene {
         timeScale: this.clock.timeScale,
         paused: this.clock.paused,
         extra: [
+          `scene  ${this.sim.scenario.id}  seed ${this.sim.seed}`,
           `ball   x ${b.x.toFixed(2)}  y ${b.y.toFixed(2)}  z ${b.z.toFixed(2)}`,
           `       |v| ${Math.hypot(b.vx, b.vy, b.vz).toFixed(2)} m/s  vz ${b.vz.toFixed(2)}`,
           p

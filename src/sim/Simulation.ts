@@ -8,16 +8,10 @@ import { createIntent, type PlayerIntent } from './intent';
 import { executeShot } from './kick';
 import { detectCrossing } from './lines';
 import { computePitchGeometry, type PitchGeometry } from './pitch';
-import {
-  clampPlayerToWorld,
-  copyKick,
-  copyPlayer,
-  createPlayer,
-  type PlayerState,
-  stepPlayer,
-} from './player';
+import { clampPlayerToWorld, copyKick, copyPlayer, type PlayerState, stepPlayer } from './player';
 import { Rng } from './rng';
-import { attackDir, restartFor, scoringTeam, TEAM_HOME } from './rules';
+import { attackDir, restartFor, scoringTeam } from './rules';
+import { getScenario, type Scenario, type ScenarioId } from './scenarios';
 
 export interface SimState {
   /** 지금까지 실행한 스텝 수 */
@@ -33,15 +27,17 @@ export interface SimState {
   ballResetTick: number;
 }
 
-function createState(): SimState {
-  return {
+function createState(scenario: Scenario, geo: PitchGeometry): SimState {
+  const s: SimState = {
     tick: 0,
     time: 0,
     ball: createBall(),
-    players: [createPlayer(0, TEAM_HOME, -1.5, 0, 0)],
+    players: scenario.createPlayers(geo),
     homeAttackDir: 1,
     ballResetTick: -1,
   };
+  scenario.place(s.ball, s.players, geo);
+  return s;
 }
 
 /** 핫 루프에서 객체를 만들지 않도록 필드를 복사한다 */
@@ -68,16 +64,21 @@ const IDLE_INTENT: Readonly<PlayerIntent> = createIntent();
 export class Simulation {
   readonly rng: Rng;
   readonly geo: PitchGeometry = computePitchGeometry();
-  readonly prev: SimState = createState();
-  readonly curr: SimState = createState();
+  readonly scenario: Scenario;
+  readonly prev: SimState;
+  readonly curr: SimState;
   private launch: LaunchCommand | null = null;
   private readonly events: SimEvent[] = [];
 
   constructor(
     readonly dt: number,
-    seed: number,
+    readonly seed: number,
+    scenarioId: ScenarioId = 'freeplay',
   ) {
     this.rng = new Rng(seed);
+    this.scenario = getScenario(scenarioId);
+    this.prev = createState(this.scenario, this.geo);
+    this.curr = createState(this.scenario, this.geo);
   }
 
   /** 개발 도구: 다음 스텝에 공을 (x, y)로 보낸다. lofted면 공중 볼 */
@@ -175,13 +176,18 @@ export class Simulation {
     }
   }
 
-  /** 골·아웃 뒤 공을 센터 스폿에 다시 놓는다 (시나리오·경기 상태 머신 전까지 임시) */
+  /** 골·아웃 뒤 시나리오대로 공(과 선수)을 다시 놓는다 (경기 상태 머신(4.1) 전까지) */
   private resetBall(): void {
     const s = this.curr;
-    copyBall(s.ball, createBall());
+    this.scenario.place(s.ball, s.players, this.geo);
     s.ballResetTick = -1;
     // 순간이동이므로 보간하지 않도록 prev도 맞춘다
     copyBall(this.prev.ball, s.ball);
+    for (let i = 0; i < s.players.length; i++) {
+      const d = this.prev.players[i];
+      const p = s.players[i];
+      if (d && p) copyPlayer(d, p);
+    }
     this.events.push({ type: 'ballReset', tick: s.tick });
   }
 }
