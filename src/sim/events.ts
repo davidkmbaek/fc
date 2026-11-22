@@ -28,4 +28,12 @@ export type SimEvent =
       /** 받을 동료 id (-1 = 슛·공간으로) */
       targetId: number;
     }
+  | {
+      type: 'tackle';
+      tick: number;
+      playerId: number;
+      kind: 'stand' | 'slide';
+      /** won: 공을 빼앗음/쳐냄, failed: 헛손질, fall: 사람을 먼저 맞혀 둘 다 넘어짐 */
+      result: 'won' | 'failed' | 'fall';
+    }
   | { type: 'ballReset'; tick: number };

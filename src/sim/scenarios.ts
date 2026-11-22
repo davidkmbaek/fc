@@ -5,7 +5,7 @@ import { createPlayer, type PlayerState } from './player';
 import { TEAM_AWAY, TEAM_HOME } from './rules';
 
 /** URL `?scenario=`로 바로 시작하는 상황. DESIGN.md §9 (corner·1v1·counter는 상대·AI가 생긴 뒤) */
-export const SCENARIO_IDS = ['team', 'freeplay', 'penalty'] as const;
+export const SCENARIO_IDS = ['team', 'freeplay', 'penalty', 'tackle'] as const;
 export type ScenarioId = (typeof SCENARIO_IDS)[number];
 
 export function isScenarioId(v: string): v is ScenarioId {
@@ -31,6 +31,8 @@ function putPlayer(p: PlayerState | undefined, x: number, y: number, facing: num
   p.facing = facing;
   p.cooldown = 0;
   p.kickBuffer = 0;
+  p.action = 'none';
+  p.actionTime = 0;
 }
 
 /** 자유 연습: 센터 스폿의 공, 공 바로 뒤의 선수. 골·아웃 뒤에는 공만 센터에 */
@@ -75,7 +77,27 @@ const team: Scenario = {
   },
 };
 
-const SCENARIOS: Record<ScenarioId, Scenario> = { team, freeplay, penalty };
+/**
+ * 태클 연습: 공을 가진 원정 선수(가만히 서 있음, -x를 봄)와 6m 앞의 홈 수비수.
+ * 골·아웃 뒤 처음 자리로.
+ */
+const TACKLE_CARRIER_X = 6;
+const tackle: Scenario = {
+  id: 'tackle',
+  createPlayers: () => [
+    createPlayer(0, TEAM_HOME, 0, 0, 0, 'DF'),
+    createPlayer(1, TEAM_AWAY, TACKLE_CARRIER_X, 0, Math.PI, 'FW'),
+  ],
+  place(ball, players) {
+    putPlayer(players[0], 0, 0, 0);
+    putPlayer(players[1], TACKLE_CARRIER_X, 0, Math.PI);
+    copyBall(ball, createBall(TACKLE_CARRIER_X - 0.6, 0));
+    ball.lastTouchPlayer = 1;
+    ball.lastTouchTeam = TEAM_AWAY;
+  },
+};
+
+const SCENARIOS: Record<ScenarioId, Scenario> = { team, freeplay, penalty, tackle };
 
 export function getScenario(id: ScenarioId): Scenario {
   return SCENARIOS[id];

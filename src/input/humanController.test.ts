@@ -128,3 +128,32 @@ describe('HumanController — 킥 종류', () => {
     expect(c.charge).toBe(0);
   });
 });
+
+describe('HumanController — 수비 중 태클', () => {
+  it('수비 중 S는 스탠딩 태클, A는 슬라이딩 태클 (누르는 순간 한 번)', () => {
+    const keys = new FakeKeys();
+    const c = new HumanController(keys, DT);
+    const intent = createIntent();
+    keys.pressed.add(KEYS.PASS);
+    c.sample(intent, true);
+    expect(intent.tackle).toBe('stand');
+    c.sample(intent, true);
+    expect(intent.tackle).toBeNull();
+    expect(c.charge).toBe(0);
+    keys.pressed.delete(KEYS.PASS);
+    c.sample(intent, true);
+    keys.pressed.add(KEYS.LOB);
+    c.sample(intent, true);
+    expect(intent.tackle).toBe('slide');
+  });
+
+  it('공격 중 S는 패스 충전', () => {
+    const keys = new FakeKeys();
+    const c = new HumanController(keys, DT);
+    const intent = createIntent();
+    keys.pressed.add(KEYS.PASS);
+    c.sample(intent, false);
+    expect(intent.tackle).toBeNull();
+    expect(c.chargingType).toBe('pass');
+  });
+});

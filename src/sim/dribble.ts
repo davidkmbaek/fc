@@ -98,7 +98,7 @@ export function collideBallWithPlayer(b: BallState, p: PlayerState, time: number
  * 상대 속도가 충분히 느리면 선수 발밑에 멈춰 세운다. 공중 볼은 떨어뜨린다. 받았으면 true.
  */
 export function tryTrap(p: PlayerState, b: BallState, time: number): boolean {
-  if (b.lastTouchPlayer === p.id) return false;
+  if (b.lastTouchPlayer === p.id || p.cooldown > 0) return false;
   if (b.z >= TRAP.MAX_Z) return false;
   const dx = b.x - p.x;
   const dy = b.y - p.y;

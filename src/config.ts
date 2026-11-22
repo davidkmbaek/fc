@@ -190,6 +190,35 @@ export const TRAP = {
   COOLDOWN: 0.1,
 };
 
+/** 태클. DESIGN.md §4 */
+export const TACKLE = {
+  /** 스탠딩 태클: 공까지 이 거리(m) 안이어야 한다 */
+  STAND_RANGE: 1.3,
+  /**
+   * 성공 확률 = BASE × 거리 항목 × 각도 항목
+   * 거리 항목 = MIN_DIST_FACTOR ~ 1 (멀수록 낮음), 각도 항목 = 정면 1 ~ 등 뒤 BEHIND_FACTOR
+   */
+  STAND_BASE_CHANCE: 0.85,
+  STAND_MIN_DIST_FACTOR: 0.4,
+  STAND_BEHIND_FACTOR: 0.35,
+  /** 스탠딩 태클 실패 시 행동 불가 (초) */
+  STAND_FAIL_STUN: 0.4,
+  /** 스탠딩 태클 성공: 공을 태클한 선수 발밑(빼앗긴 선수 반대쪽) 이 거리(m)로 가져온다 */
+  STAND_BALL_OFFSET: 0.6,
+  /** 공을 빼앗긴 선수는 이 시간(초) 동안 공을 받거나 터치하지 못한다 */
+  BEATEN_TIME: 0.6,
+  /** 슬라이딩: 속도·거리, 끝난 뒤 행동 불가 시간 */
+  SLIDE_SPEED: 9,
+  SLIDE_DIST: 3.5,
+  SLIDE_RECOVERY: 0.8,
+  /** 슬라이딩 중 공을 맞히는 거리 (선수 중심 앞쪽, m) */
+  SLIDE_REACH: 0.75,
+  /** 슬라이딩에 맞은 공의 속도 (m/s) */
+  SLIDE_BALL_SPEED: 7,
+  /** 슬라이딩이 사람을 먼저 맞히면 둘 다 넘어져 있는 시간 (초). 파울 도입 전까지 */
+  FALL_TIME: 1.2,
+};
+
 /** 선수 전환. DESIGN.md §5 */
 export const SWITCH = {
   /** 방향키 + Q: 그 방향 ± 이 각도 안의 동료 */
@@ -223,6 +252,7 @@ export const TUNABLES: Record<string, Record<string, number>> = {
   DRIBBLE,
   PASS,
   TRAP,
+  TACKLE,
   SHOT,
   BALL,
   GOAL_PHYSICS,

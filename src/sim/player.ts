@@ -6,6 +6,14 @@ import { clamp, lerp } from './math/scalar';
 /** 포지션. DESIGN.md §7 포메이션 */
 export type Role = 'GK' | 'DF' | 'MF' | 'FW';
 
+/**
+ * 선수 행동 상태. none 외에는 입력을 받지 않는다. DESIGN.md §4 태클
+ * - slide: 슬라이딩 중 (보는 방향으로 미끄러짐)
+ * - stunned: 태클 실패·슬라이딩 후 행동 불가
+ * - fallen: 넘어짐 (슬라이딩이 사람을 먼저 맞힘)
+ */
+export type PlayerAction = 'none' | 'slide' | 'stunned' | 'fallen';
+
 export interface PlayerState {
   readonly id: number;
   readonly team: number;
@@ -26,6 +34,11 @@ export interface PlayerState {
    */
   kick: KickIntent;
   kickBuffer: number;
+  action: PlayerAction;
+  /** 현재 행동이 끝날 때까지 남은 시간 (초) */
+  actionTime: number;
+  /** 이번 슬라이딩에서 공을 이미 맞혔는가 */
+  slideHitBall: boolean;
 }
 
 export function createPlayer(
@@ -49,6 +62,9 @@ export function createPlayer(
     cooldown: 0,
     kick: { type: 'shot', power: 0, aimX: 0, aimY: 0 },
     kickBuffer: 0,
+    action: 'none',
+    actionTime: 0,
+    slideHitBall: false,
   };
 }
 
@@ -62,6 +78,9 @@ export function copyPlayer(dst: PlayerState, src: PlayerState): void {
   dst.cooldown = src.cooldown;
   copyKick(dst.kick, src.kick);
   dst.kickBuffer = src.kickBuffer;
+  dst.action = src.action;
+  dst.actionTime = src.actionTime;
+  dst.slideHitBall = src.slideHitBall;
 }
 
 export function copyKick(dst: KickIntent, src: KickIntent): void {

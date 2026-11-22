@@ -1,3 +1,4 @@
+import { possessorId } from '../sim/dribble';
 import type { PlayerIntent } from '../sim/intent';
 import type { SimState } from '../sim/Simulation';
 import { HumanController } from './humanController';
@@ -11,6 +12,7 @@ function clearIntent(i: PlayerIntent | undefined): void {
   i.moveY = 0;
   i.sprint = false;
   i.kick = null;
+  i.tackle = null;
   i.switchPlayer = false;
 }
 
@@ -21,8 +23,10 @@ function clearIntent(i: PlayerIntent | undefined): void {
 export class HumanSide {
   readonly input: HumanController;
   private readonly control: TeamControl;
+  private readonly team: number;
 
   constructor(keys: KeyReader, dt: number, team: number, startId: number, s: SimState) {
+    this.team = team;
     this.input = new HumanController(keys, dt);
     this.control = new TeamControl(startId, team, s.ball.lastTouchPlayer);
   }
@@ -34,7 +38,8 @@ export class HumanSide {
   beforeStep(intents: PlayerIntent[], s: SimState): void {
     const intent = intents[this.controlledId];
     if (!intent) return;
-    this.input.sample(intent);
+    const owner = s.players[possessorId(s.players, s.ball)];
+    this.input.sample(intent, owner !== undefined && owner.team !== this.team);
     const prev = this.control.beforeStep(intent, s);
     if (prev >= 0) {
       clearIntent(intents[prev]);

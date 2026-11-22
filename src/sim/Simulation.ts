@@ -21,6 +21,7 @@ import { clampPlayerToWorld, copyKick, copyPlayer, type PlayerState, stepPlayer 
 import { Rng } from './rng';
 import { attackDir, restartFor, scoringTeam } from './rules';
 import { getScenario, type Scenario, type ScenarioId } from './scenarios';
+import { standTackle, startSlide, stepSlide, tickAction } from './tackle';
 
 export interface SimState {
   /** 지금까지 실행한 스텝 수 */
@@ -115,18 +116,48 @@ export class Simulation {
 
     const owner = possessorId(s.players, s.ball);
     for (const p of s.players) {
-      stepPlayer(p, intents[p.id] ?? IDLE_INTENT, this.dt, p.id === owner);
+      const intent = intents[p.id] ?? IDLE_INTENT;
+      tickAction(p, this.dt);
+      if (p.action === 'none' && intent.tackle) this.startTackle(p, intent);
+      if (p.action === 'slide') {
+        const r = stepSlide(p, s.players, s.ball, this.dt, s.time);
+        if (r) this.pushTackle(p, 'slide', r === 'ball' ? 'won' : 'fall');
+      } else {
+        // 행동 불가(stunned·fallen) 중에는 입력을 무시하고 멈춘다
+        stepPlayer(p, p.action === 'none' ? intent : IDLE_INTENT, this.dt, p.id === owner);
+      }
       clampPlayerToWorld(p, this.geo.worldHalfLength, this.geo.worldHalfWidth);
       p.cooldown = Math.max(0, p.cooldown - this.dt);
     }
     collidePlayers(s.players, owner);
-    for (const p of s.players) this.playerBallContact(p, intents[p.id] ?? IDLE_INTENT);
+    for (const p of s.players) {
+      if (p.action === 'none') this.playerBallContact(p, intents[p.id] ?? IDLE_INTENT);
+      else collideBallWithPlayer(s.ball, p, s.time);
+    }
 
     this.stepBallWithCollisions();
     bounceOffWorldEdge(s.ball, this.geo.worldHalfLength, this.geo.worldHalfWidth);
   }
 
-  /** 킥 → 드리블 터치 → 몸 충돌 순으로 선수와 공의 접촉을 처리한다 */
+  private startTackle(p: PlayerState, intent: PlayerIntent): void {
+    const s = this.curr;
+    p.kickBuffer = 0;
+    if (intent.tackle === 'stand') {
+      this.pushTackle(p, 'stand', standTackle(p, s.players, s.ball, this.rng, s.time));
+    } else {
+      startSlide(p, intent.moveX, intent.moveY);
+    }
+  }
+
+  private pushTackle(
+    p: PlayerState,
+    kind: 'stand' | 'slide',
+    result: 'won' | 'failed' | 'fall',
+  ): void {
+    this.events.push({ type: 'tackle', tick: this.curr.tick, playerId: p.id, kind, result });
+  }
+
+  /** 킥 → 받기·드리블 터치 → 몸 충돌 순으로 선수와 공의 접촉을 처리한다 */
   private playerBallContact(p: PlayerState, intent: PlayerIntent): void {
     const s = this.curr;
     const b = s.ball;

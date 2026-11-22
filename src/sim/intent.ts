@@ -20,10 +20,12 @@ export interface PlayerIntent {
   sprint: boolean;
   /** 이번 스텝에 실행할 킥 (없으면 null) */
   kick: KickIntent | null;
+  /** 이번 스텝에 시작할 태클 (없으면 null) */
+  tackle: 'stand' | 'slide' | null;
   /** 선수 전환 요청 (사람만 사용, 이번 스텝에 Q를 눌렀다) */
   switchPlayer: boolean;
 }
 
 export function createIntent(): PlayerIntent {
-  return { moveX: 0, moveY: 0, sprint: false, kick: null, switchPlayer: false };
+  return { moveX: 0, moveY: 0, sprint: false, kick: null, tackle: null, switchPlayer: false };
 }

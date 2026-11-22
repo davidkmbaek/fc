@@ -15,10 +15,13 @@ const KICK_KEYS: readonly { key: string; type: KickType }[] = [
  * DESIGN.md §5
  * - 킥 세기: 버튼을 누르고 있는 시간 (CHARGE_TIME초에 최대), 떼는 순간 실행
  * - 충전 중에는 처음 누른 킥 버튼만 본다
+ * - 수비 중(상대가 공을 가짐)에는 S = 스탠딩 태클, A = 슬라이딩 태클 (누르는 순간)
  */
 export class HumanController {
   private chargeSteps = 0;
   private switchWasDown = false;
+  private passWasDown = false;
+  private lobWasDown = false;
   private chargeKey: { key: string; type: KickType } | null = null;
   /** 매 스텝 새로 만들지 않도록 재사용하는 킥 의도 */
   private readonly kick: KickIntent = { type: 'shot', power: 0, aimX: 0, aimY: 0 };
@@ -45,7 +48,8 @@ export class HumanController {
     this.chargeSteps = 0;
   }
 
-  sample(intent: PlayerIntent): void {
+  /** defending: 상대 팀이 공을 소유하고 있다 */
+  sample(intent: PlayerIntent, defending = false): void {
     const k = this.keys;
     let mx = (k.isDown(KEYS.RIGHT) ? 1 : 0) - (k.isDown(KEYS.LEFT) ? 1 : 0);
     let my = (k.isDown(KEYS.DOWN) ? 1 : 0) - (k.isDown(KEYS.UP) ? 1 : 0);
@@ -61,8 +65,22 @@ export class HumanController {
     intent.switchPlayer = switchDown && !this.switchWasDown;
     this.switchWasDown = switchDown;
 
+    const passDown = k.isDown(KEYS.PASS);
+    const lobDown = k.isDown(KEYS.LOB);
+    intent.tackle = null;
+    if (defending && !this.chargeKey) {
+      if (passDown && !this.passWasDown) intent.tackle = 'stand';
+      else if (lobDown && !this.lobWasDown) intent.tackle = 'slide';
+    }
+    this.passWasDown = passDown;
+    this.lobWasDown = lobDown;
+
     if (!this.chargeKey) {
-      this.chargeKey = KICK_KEYS.find((c) => k.isDown(c.key)) ?? null;
+      // 수비 중 S·A는 태클이므로 킥 충전을 시작하지 않는다
+      this.chargeKey =
+        KICK_KEYS.find(
+          (c) => k.isDown(c.key) && !(defending && (c.key === KEYS.PASS || c.key === KEYS.LOB)),
+        ) ?? null;
       if (this.chargeKey) this.chargeSteps = 1;
       return;
     }

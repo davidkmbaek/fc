@@ -2,9 +2,17 @@ import Phaser from 'phaser';
 import { PLAYER, PLAYER_STYLE, RENDER } from '../config';
 import { angleDiff } from '../sim/math/angle';
 import { lerp } from '../sim/math/scalar';
-import type { PlayerState, Role } from '../sim/player';
+import type { PlayerAction, PlayerState, Role } from '../sim/player';
 import { TEAM_HOME } from '../sim/rules';
 import { mToPx, worldPxX, worldPxY } from './coords';
+
+/** 행동 상태별 모양: 슬라이딩은 앞뒤로 길게, 행동 불가는 반투명, 넘어짐은 더 흐리고 납작하게 */
+const ACTION_LOOK: Record<PlayerAction, { scaleX: number; scaleY: number; alpha: number }> = {
+  none: { scaleX: 1, scaleY: 1, alpha: 1 },
+  slide: { scaleX: 1.4, scaleY: 0.75, alpha: 1 },
+  stunned: { scaleX: 1, scaleY: 1, alpha: 0.6 },
+  fallen: { scaleX: 1.2, scaleY: 0.8, alpha: 0.4 },
+};
 
 /**
  * 선수 한 명: 팀 색 원(몸) + 보는 방향 흰 삼각형 + 그림자. 스프라이트·애니메이션은 5단계.
@@ -61,9 +69,12 @@ export class PlayerView {
     const off = PLAYER_STYLE.SHADOW_OFFSET;
 
     this.shadow.setPosition(worldPxX(x + off), worldPxY(y + off));
+    const look = ACTION_LOOK[curr.action];
     this.body
       .setPosition(worldPxX(x), worldPxY(y))
       .setRotation(facing)
+      .setScale(look.scaleX, look.scaleY)
+      .setAlpha(look.alpha)
       .setDepth(RENDER.DEPTH.PLAYERS + (y + this.worldHalfWidth) * PLAYER_STYLE.Y_SORT_SCALE);
   }
 }
