@@ -1,6 +1,10 @@
 /**
  * 모든 튜닝 수치는 이 파일에 둔다 (CLAUDE.md 규칙 7).
  * 초기값의 근거는 docs/DESIGN.md를 참고한다.
+ *
+ * - `as const` 섹션: 바뀌면 안 되는 값 (규격, 해상도 등)
+ * - `TUNABLES`에 등록된 섹션: 개발 빌드의 Tweakpane에서 실행 중에 바꿀 수 있다.
+ *   `as const`를 붙이지 않아 타입이 number로 유지된다.
  */
 
 export const SIM = {
@@ -8,6 +12,37 @@ export const SIM = {
   DT: 1 / 60,
   /** 한 프레임에 처리할 최대 스텝 수 (탭 복귀 시 시간 폭주 방지) */
   MAX_STEPS_PER_FRAME: 5,
+  /** 기본 RNG 시드 (시나리오 URL `?seed=`는 1.5에서) */
+  DEFAULT_SEED: 1,
+} as const;
+
+/** 보간 확인용 임시 점: 센터 서클 위를 돈다. 1.1(공)에서 삭제 */
+export const PROBE = {
+  /** 반지름 (미터) */
+  RADIUS: 9.15,
+  /** 각속도 (rad/s) */
+  ANGULAR_SPEED: 1.5,
+};
+
+/** Tweakpane에서 조절할 섹션 (이름 → 객체). 값은 number만 */
+export const TUNABLES: Record<string, Record<string, number>> = { PROBE };
+
+export const DEBUG = {
+  /** `[` `]`로 바꾸는 배속 단계 */
+  TIME_SCALES: [0.25, 0.5, 1],
+  /** 오버레이 텍스트 갱신 주기 (초) */
+  OVERLAY_REFRESH: 0.25,
+  /** 스텝 처리 시간 지수이동평균 계수 */
+  STEP_TIME_SMOOTHING: 0.1,
+  OVERLAY_FONT_SIZE: '14px',
+  OVERLAY_COLOR: '#e6ffe6',
+  OVERLAY_BACKGROUND: '#000000aa',
+  OVERLAY_PADDING: 8,
+  PROBE_COLOR: 0xffeb3b,
+  /** 임시 점 반지름 (미터) */
+  PROBE_RADIUS: 0.6,
+  /** Tweakpane 패널이 화면 값을 다시 읽는 주기 (밀리초) */
+  PANEL_REFRESH_MS: 250,
 } as const;
 
 /** 경기장 규격 (미터). DESIGN.md §2 */
@@ -44,6 +79,8 @@ export const RENDER = {
   DEPTH: {
     PITCH: 0,
     GOAL_BACK: 10,
+    /** 선수·공 (임시 점 포함) */
+    ENTITIES: 20,
     GOAL_FRONT: 30,
   },
 } as const;

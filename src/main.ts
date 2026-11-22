@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { RENDER } from './config';
+import { DebugOverlayScene } from './scenes/DebugOverlayScene';
 import { MatchScene } from './scenes/MatchScene';
 
 new Phaser.Game({
@@ -12,5 +13,6 @@ new Phaser.Game({
     width: RENDER.WIDTH,
     height: RENDER.HEIGHT,
   },
-  scene: [MatchScene],
+  // 목록 순서 = 그리는 순서. 오버레이(HUD)가 경기 화면 위에 오도록 뒤에 둔다
+  scene: [MatchScene, DebugOverlayScene],
 });
