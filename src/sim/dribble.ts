@@ -36,6 +36,7 @@ export function markTouch(b: BallState, p: PlayerState, time: number): void {
   b.lastTouchPlayer = p.id;
   b.lastTouchTeam = p.team;
   b.lastTouchTime = time;
+  b.passTarget = -1;
 }
 
 /**

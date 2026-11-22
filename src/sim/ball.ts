@@ -14,6 +14,8 @@ export interface BallState {
   lastTouchTeam: number;
   /** 마지막 터치 시각 (시뮬레이션 초) */
   lastTouchTime: number;
+  /** 이 공을 받을 동료 id (패스 직후 설정, 누가 건드리면 -1). 선수 자동 전환·AI 받기용 */
+  passTarget: number;
 }
 
 export function createBall(x = 0, y = 0): BallState {
@@ -27,6 +29,7 @@ export function createBall(x = 0, y = 0): BallState {
     lastTouchPlayer: -1,
     lastTouchTeam: -1,
     lastTouchTime: 0,
+    passTarget: -1,
   };
 }
 
@@ -40,6 +43,7 @@ export function copyBall(dst: BallState, src: BallState): void {
   dst.lastTouchPlayer = src.lastTouchPlayer;
   dst.lastTouchTeam = src.lastTouchTeam;
   dst.lastTouchTime = src.lastTouchTime;
+  dst.passTarget = src.passTarget;
 }
 
 export function isAirborne(b: BallState): boolean {

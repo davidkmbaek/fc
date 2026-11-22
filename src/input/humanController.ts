@@ -18,6 +18,7 @@ const KICK_KEYS: readonly { key: string; type: KickType }[] = [
  */
 export class HumanController {
   private chargeSteps = 0;
+  private switchWasDown = false;
   private chargeKey: { key: string; type: KickType } | null = null;
   /** 매 스텝 새로 만들지 않도록 재사용하는 킥 의도 */
   private readonly kick: KickIntent = { type: 'shot', power: 0, aimX: 0, aimY: 0 };
@@ -56,6 +57,9 @@ export class HumanController {
     intent.moveY = my;
     intent.sprint = k.isDown(KEYS.SPRINT);
     intent.kick = null;
+    const switchDown = k.isDown(KEYS.SWITCH);
+    intent.switchPlayer = switchDown && !this.switchWasDown;
+    this.switchWasDown = switchDown;
 
     if (!this.chargeKey) {
       this.chargeKey = KICK_KEYS.find((c) => k.isDown(c.key)) ?? null;

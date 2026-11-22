@@ -190,6 +190,16 @@ export const TRAP = {
   COOLDOWN: 0.1,
 };
 
+/** 선수 전환. DESIGN.md §5 */
+export const SWITCH = {
+  /** 방향키 + Q: 그 방향 ± 이 각도 안의 동료 */
+  DIR_CONE_DEG: 60,
+  /** 방향 전환 점수의 거리 정규화 (m): 각도 차이 1콘 = 이 거리만큼 더 먼 것과 같다 */
+  DIR_DIST_NORM: 60,
+  /** 우리 팀 패스를 받을 동료로 자동 전환 */
+  AUTO_ON_PASS: true,
+} as const;
+
 /** 경기 규칙 */
 export const RULES = {
   /** 골·아웃 후 공을 다시 놓을 때까지 (초). 경기 상태 머신(4.1) 전까지 임시 */
@@ -357,6 +367,13 @@ export const PLAYER_STYLE = {
   GAUGE_BG: 0x000000,
   GAUGE_FILL: 0xffd600,
   GAUGE_FULL: 0xff5722,
+  /** 조작 선수 화살표 (m): 머리 위 OFFSET_Y에 끝이 오도록 */
+  MARKER_SIZE: 0.6,
+  MARKER_OFFSET_Y: 0.6,
+  MARKER_OUTLINE_COLOR: 0xffffff,
+  MARKER_OUTLINE_PX: 2,
+  /** 화면 밖일 때 가장자리에서 띄우는 거리 (화면 px) */
+  MARKER_EDGE_MARGIN_PX: 24,
 } as const;
 
 /** 디버그 오버레이의 월드 표시 (컨트롤 반경, 속도 벡터). DESIGN.md §9 */

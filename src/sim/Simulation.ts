@@ -144,6 +144,7 @@ export class Simulation {
           targetId = executePass(b, p, k, s.players, this.geo, this.rng);
         }
         markTouch(b, p, s.time);
+        b.passTarget = targetId;
         p.cooldown = DRIBBLE.KICK_COOLDOWN;
         p.kickBuffer = 0;
         this.events.push({
