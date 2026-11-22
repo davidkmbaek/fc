@@ -57,8 +57,46 @@ describe('Simulation', () => {
 
   it('공은 월드 밖으로 나가지 않는다', () => {
     const sim = new Simulation(DT, 1);
-    sim.requestLaunch(200, 0, false);
-    runSteps(sim, 60 * 10);
-    expect(Math.abs(sim.curr.ball.x)).toBeLessThanOrEqual(sim.geo.worldHalfLength);
+    sim.requestLaunch(0, 200, false);
+    for (let i = 0; i < 60 * 3; i++) {
+      sim.step();
+      expect(Math.abs(sim.curr.ball.y)).toBeLessThanOrEqual(sim.geo.worldHalfWidth);
+    }
+  });
+});
+
+describe('Simulation — 골·아웃 이벤트', () => {
+  it('골문 안으로 찬 공은 goal 이벤트(+x 골문 → 전반 홈 득점)를 한 번만 낸다', () => {
+    const sim = new Simulation(DT, 1);
+    sim.requestLaunch(60, 0, false);
+    runSteps(sim, 60 * 4);
+    const goals = sim.drainEvents().filter((e) => e.type === 'goal');
+    expect(goals).toEqual([{ type: 'goal', tick: expect.any(Number) as number, side: 1, team: 0 }]);
+  });
+
+  it('터치라인 밖으로 나가면 out 이벤트와 재시작 종류를 낸다', () => {
+    const sim = new Simulation(DT, 1);
+    sim.requestLaunch(0, -50, false);
+    runSteps(sim, 60 * 4);
+    const out = sim.drainEvents().find((e) => e.type === 'out');
+    expect(out).toMatchObject({ line: 'touch', side: -1, restart: 'throwIn', team: 1 });
+  });
+
+  it('골·아웃 후 지연 시간이 지나면 공을 센터 스폿에 다시 놓는다', () => {
+    const sim = new Simulation(DT, 1);
+    sim.requestLaunch(60, 0, false);
+    runSteps(sim, 60 * 6);
+    const types = sim.drainEvents().map((e) => e.type);
+    expect(types).toContain('ballReset');
+    expect(sim.curr.ball).toMatchObject({ x: 0, y: 0, z: 0, vx: 0, vy: 0 });
+    expect(sim.curr.ballResetTick).toBe(-1);
+  });
+
+  it('drainEvents()는 꺼낸 이벤트를 비운다', () => {
+    const sim = new Simulation(DT, 1);
+    sim.requestLaunch(60, 0, false);
+    runSteps(sim, 60 * 4);
+    expect(sim.drainEvents().length).toBeGreaterThan(0);
+    expect(sim.drainEvents()).toEqual([]);
   });
 });

@@ -35,7 +35,28 @@ export const BALL = {
   STOP_SPEED: 0.05,
   /** 월드 가장자리(광고판) 반발 계수 */
   BOARD_RESTITUTION: 0.3,
+  /**
+   * 한 스텝을 나눠 계산하는 횟수. 30 m/s 공이 한 스텝에 0.5m 움직여
+   * 골포스트(충돌 반경 0.17m)를 뚫지 않도록 한다.
+   */
+  SUBSTEPS: 4,
 };
+
+/** 골대 충돌. DESIGN.md §3 */
+export const GOAL_PHYSICS = {
+  POST_RESTITUTION: 0.7,
+  /** 골망 안쪽에 부딪힐 때: 수직 성분 반발, 나머지 성분 유지 비율 (속도를 크게 줄임) */
+  NET_RESTITUTION: 0.1,
+  NET_FRICTION: 0.5,
+  /** 골망 바깥쪽(옆·뒤·지붕)에 부딪힐 때 반발 */
+  NET_OUTSIDE_RESTITUTION: 0.2,
+};
+
+/** 경기 규칙 */
+export const RULES = {
+  /** 골·아웃 후 공을 다시 놓을 때까지 (초). 경기 상태 머신(4.1) 전까지 임시 */
+  BALL_RESET_DELAY: 2,
+} as const;
 
 /** 개발 도구: 클릭으로 공 발사. DESIGN.md §9 */
 export const DEV_LAUNCH = {
@@ -49,7 +70,11 @@ export const DEV_LAUNCH = {
 };
 
 /** Tweakpane에서 조절할 섹션 (이름 → 객체). 값은 number만 */
-export const TUNABLES: Record<string, Record<string, number>> = { BALL, DEV_LAUNCH };
+export const TUNABLES: Record<string, Record<string, number>> = {
+  BALL,
+  GOAL_PHYSICS,
+  DEV_LAUNCH,
+};
 
 export const DEBUG = {
   /** `[` `]`로 바꾸는 배속 단계 */
@@ -124,6 +149,19 @@ export const BALL_STYLE = {
   /** 그림자: 알파와 크기를 1 / (1 + z × 이 값)으로 줄인다 */
   SHADOW_FADE_PER_M: 0.35,
   SHADOW_SHRINK_PER_M: 0.12,
+} as const;
+
+/** HUD (점수판·안내 문구) */
+export const HUD_STYLE = {
+  BANNER_Y: 110,
+  BANNER_FONT_SIZE: '40px',
+  BANNER_SMALL_FONT_SIZE: '24px',
+  BANNER_COLOR: '#ffffff',
+  BANNER_STROKE: '#000000',
+  BANNER_STROKE_PX: 6,
+  /** 배너 표시 시간 (초) */
+  BANNER_SECONDS: 1.8,
+  BANNER_SMALL_SECONDS: 0.8,
 } as const;
 
 /** 개발 빌드 전용 임시 카메라 (1.3에서 경기 카메라로 대체) */

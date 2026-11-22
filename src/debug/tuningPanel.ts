@@ -19,7 +19,8 @@ export function createTuningPanel(clock: FixedStepClock): void {
   time.addButton({ title: '한 스텝 (N)' }).on('click', () => clock.requestStep());
 
   for (const [name, section] of Object.entries(TUNABLES)) {
-    const folder = pane.addFolder({ title: name });
+    // 화면을 덜 가리도록 접힌 상태로 시작한다
+    const folder = pane.addFolder({ title: name, expanded: false });
     for (const key of Object.keys(section)) folder.addBinding(section, key);
   }
 
