@@ -12,6 +12,8 @@ export interface DebugInfo {
   simTime: number;
   timeScale: number;
   paused: boolean;
+  /** 공·선수 상태 등 추가로 보여줄 줄 */
+  extra: string[];
 }
 
 export interface DebugOverlayData {
@@ -71,6 +73,7 @@ export class DebugOverlayScene extends Phaser.Scene {
       `tick   ${i.tick}`,
       `time   ${i.simTime.toFixed(2)} s`,
       `speed  ${i.timeScale}×  ${i.paused ? '⏸ PAUSED' : '▶'}`,
+      ...i.extra,
       '',
       HELP,
     ]);

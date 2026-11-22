@@ -12,20 +12,44 @@ export const SIM = {
   DT: 1 / 60,
   /** 한 프레임에 처리할 최대 스텝 수 (탭 복귀 시 시간 폭주 방지) */
   MAX_STEPS_PER_FRAME: 5,
-  /** 기본 RNG 시드 (시나리오 URL `?seed=`는 1.5에서) */
+  /** 기본 RNG 시드 (URL `?seed=`로 바꿀 수 있음) */
   DEFAULT_SEED: 1,
 } as const;
 
-/** 보간 확인용 임시 점: 센터 서클 위를 돈다. 1.1(공)에서 삭제 */
-export const PROBE = {
-  /** 반지름 (미터) */
-  RADIUS: 9.15,
-  /** 각속도 (rad/s) */
-  ANGULAR_SPEED: 1.5,
+/** 공 물리. DESIGN.md §3 */
+export const BALL = {
+  RADIUS: 0.11,
+  /** m/s² */
+  GRAVITY: 9.81,
+  /** 공기 저항 계수: 감속 = AIR_DRAG × |v|² */
+  AIR_DRAG: 0.013,
+  /** 바운드 반발 계수 (잔디) */
+  BOUNCE_RESTITUTION: 0.55,
+  /** 바운드할 때 수평 속도 유지 비율 */
+  BOUNCE_FRICTION: 0.85,
+  /** 바운드 후 vz가 이보다 작으면 굴러가는 상태로 */
+  BOUNCE_STOP_VZ: 0.6,
+  /** 굴러갈 때 감속: |v| -= (ROLL_DECEL + ROLL_DAMPING × |v|) × dt */
+  ROLL_DECEL: 2.0,
+  ROLL_DAMPING: 0.25,
+  STOP_SPEED: 0.05,
+  /** 월드 가장자리(광고판) 반발 계수 */
+  BOARD_RESTITUTION: 0.3,
+};
+
+/** 개발 도구: 클릭으로 공 발사. DESIGN.md §9 */
+export const DEV_LAUNCH = {
+  /** 땅볼 최대 속도 (m/s) */
+  MAX_GROUND_SPEED: 30,
+  /** 땅볼이 클릭 지점에 도착할 때 속도 (0 = 거기서 멈춤) */
+  ARRIVE_SPEED: 0,
+  /** 공중 볼 체공 시간 = BASE + 거리 × PER_M (초) */
+  LOB_TIME_BASE: 0.6,
+  LOB_TIME_PER_M: 0.03,
 };
 
 /** Tweakpane에서 조절할 섹션 (이름 → 객체). 값은 number만 */
-export const TUNABLES: Record<string, Record<string, number>> = { PROBE };
+export const TUNABLES: Record<string, Record<string, number>> = { BALL, DEV_LAUNCH };
 
 export const DEBUG = {
   /** `[` `]`로 바꾸는 배속 단계 */
@@ -38,11 +62,10 @@ export const DEBUG = {
   OVERLAY_COLOR: '#e6ffe6',
   OVERLAY_BACKGROUND: '#000000aa',
   OVERLAY_PADDING: 8,
-  PROBE_COLOR: 0xffeb3b,
-  /** 임시 점 반지름 (미터) */
-  PROBE_RADIUS: 0.6,
   /** Tweakpane 패널이 화면 값을 다시 읽는 주기 (밀리초) */
   PANEL_REFRESH_MS: 250,
+  /** 이 거리(px) 이하로 움직이고 뗀 포인터만 클릭으로 본다 (드래그와 구분) */
+  CLICK_MAX_MOVE_PX: 5,
 } as const;
 
 /** 경기장 규격 (미터). DESIGN.md §2 */
@@ -79,10 +102,28 @@ export const RENDER = {
   DEPTH: {
     PITCH: 0,
     GOAL_BACK: 10,
-    /** 선수·공 (임시 점 포함) */
-    ENTITIES: 20,
+    SHADOWS: 15,
+    PLAYERS: 20,
+    BALL: 25,
     GOAL_FRONT: 30,
+    DEBUG_WORLD: 40,
   },
+} as const;
+
+/** 공 그리기. DESIGN.md §8 */
+export const BALL_STYLE = {
+  /** 화면에서 공을 실제보다 크게 그리는 배율 (시뮬레이션 반지름은 그대로) */
+  VISUAL_SCALE: 1.6,
+  /** 높이 1m당 크기 증가: 배율 = 1 + z × 이 값 */
+  Z_SIZE_GAIN: 0.08,
+  COLOR: 0xffffff,
+  OUTLINE_COLOR: 0x222222,
+  OUTLINE_PX: 1.5,
+  SHADOW_COLOR: 0x000000,
+  SHADOW_ALPHA: 0.35,
+  /** 그림자: 알파와 크기를 1 / (1 + z × 이 값)으로 줄인다 */
+  SHADOW_FADE_PER_M: 0.35,
+  SHADOW_SHRINK_PER_M: 0.12,
 } as const;
 
 /** 개발 빌드 전용 임시 카메라 (1.3에서 경기 카메라로 대체) */
