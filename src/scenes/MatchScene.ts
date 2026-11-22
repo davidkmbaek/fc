@@ -21,8 +21,9 @@ import { nearestPlayerId } from '../sim/selection';
 import { Simulation } from '../sim/Simulation';
 import { parseScenarioParams } from '../scenarioParams';
 import { bannerFor } from '../ui/labels';
+import { defaultTeamColors } from '../ui/teamColors';
 import { DEBUG_OVERLAY_KEY, DebugOverlayScene, type DebugInfo } from './DebugOverlayScene';
-import { HUD_KEY, HudScene } from './HudScene';
+import { HUD_KEY, type HudData, HudScene } from './HudScene';
 
 /**
  * 경기 화면. 고정 스텝으로 시뮬레이션을 돌리고, 이전·현재 상태를 보간해서 그린다.
@@ -83,7 +84,12 @@ export class MatchScene extends Phaser.Scene {
     this.camera = new MatchCamera(this.cameras.main, geo);
     this.camera.snapTo(this.sim.curr.ball.x, this.sim.curr.ball.y);
 
-    this.scene.launch(HUD_KEY);
+    const hud: HudData = {
+      getState: () => this.sim.curr,
+      getControlledId: () => this.human.controlledId,
+      colors: defaultTeamColors(),
+    };
+    this.scene.launch(HUD_KEY, hud);
     this.setupDebugTools();
     this.pauseOnFocusLoss();
 

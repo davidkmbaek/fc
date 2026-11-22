@@ -517,6 +517,27 @@ export const HUD_STYLE = {
   /** 배너 표시 시간 (초) */
   BANNER_SECONDS: 1.8,
   BANNER_SMALL_SECONDS: 0.8,
+
+  /** 점수판 (화면 위 가운데) */
+  SCORE_Y: 26,
+  SCORE_FONT_SIZE: '24px',
+  SCORE_BG: 0x000000,
+  SCORE_BG_ALPHA: 0.55,
+  SCORE_WIDTH: 330,
+  SCORE_HEIGHT: 40,
+  /** 팀 색 칩 크기 (px) */
+  SCORE_CHIP: 14,
+
+  /** 미니맵 (화면 아래 가운데): 1m = MINIMAP_SCALE px */
+  MINIMAP_SCALE: 2,
+  MINIMAP_MARGIN_BOTTOM: 12,
+  MINIMAP_BG: 0x0b3d0b,
+  MINIMAP_BG_ALPHA: 0.6,
+  MINIMAP_LINE: 0xffffff,
+  MINIMAP_LINE_ALPHA: 0.5,
+  MINIMAP_DOT: 3,
+  MINIMAP_BALL: 0xffffff,
+  MINIMAP_BALL_DOT: 2.5,
 } as const;
 
 /** 경기 카메라. DESIGN.md §8 */
