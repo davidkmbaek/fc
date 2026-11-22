@@ -4,37 +4,20 @@
 
 ## 현재 위치
 
-**1단계 — 공과 선수 1명** / 다음 작업: **1.1 공 시뮬레이션(z축, 바운드, 굴러감)과 테스트, 그림자, 클릭으로 공 발사**
+**2단계 — 팀 조작** / 다음 작업: **2.1 5:5 포메이션 배치, 선수끼리 충돌**
 
-(0단계 완료 조건 중 "배포 URL에서 백틱 오버레이"는 0.4를 push한 뒤 배포판에서 확인)
-
-배포 URL: <https://davidkmbaek.github.io/fc/>
+- 1단계 완료. 단, 아래 결정 기록의 **"승인 대기"** 항목은 DESIGN.md에 반영하기 전에 사용자 확인이 필요하다.
+- 배포 URL: <https://davidkmbaek.github.io/fc/> (시나리오: `?scenario=penalty&seed=5`)
 
 ## 완료
 
-- **0.1 프로젝트 세팅** (2026-11-22)
-  - Vite 8 + TypeScript 6.0(strict, `noUncheckedIndexedAccess`) + Phaser 4.2.1 + ESLint 10 + Prettier 3 + Vitest 5
-  - `npm run check` = typecheck → lint → format:check → test
-  - ESLint: `any` 금지, `src/sim/**`에서 `phaser` import와 `Math.random` 금지 (위반 시 오류 나는 것 확인함)
-  - `vite.config.ts` `base: '/fc/'`, `Scale.FIT` 1280×720 `MatchScene` 자리 표시 화면
-  - `src/sim/rng.ts` 시드 RNG(mulberry32)와 테스트 5개
-- **0.2 경기장 그리기** (2026-11-22)
-  - `config.ts`에 `PITCH` 규격, `PITCH_STYLE`, `RENDER.PX_PER_M`(32)·`Z_SCREEN_SCALE`·`DEPTH`
-  - `src/sim/pitch.ts` 규격에서 위치 계산(페널티 아크 반각 등)과 테스트 4개
-  - `src/render/PitchRenderer.ts`: 잔디 줄무늬 + 라인을 한 번 그려 `'pitch'` 텍스처(3744×2560)로 저장. 골대는 back(바닥·먼 옆그물·뒷그물) / front(지붕·가까운 옆그물·포스트·크로스바) 두 레이어
-  - 월드 전체가 한 화면에 보이는 배율. 개발 빌드에서만 휠 확대·드래그 이동(`devCameraControls.ts`, 1.3에서 대체)
-- **0.3 Pages 배포** (2026-11-22)
-  - `.github/workflows/deploy.yml`: `main` push → `npm ci` → `npm run check` → build → Pages 배포. check 실패 시 배포 안 함
-  - 저장소 Settings → Pages → Source = GitHub Actions (사용자가 설정)
-  - 첫 배포 성공, 배포 URL에서 경기장 표시 확인
-- **0.4 고정 스텝 루프와 디버그 도구** (2026-11-22)
-  - `src/sim/loop.ts` `FixedStepClock`: 누적기, 프레임당 최대 5스텝(넘치면 버림), 배속, 일시정지, 한 스텝 예약. 테스트 9개
-  - `src/sim/Simulation.ts`: `prev`/`curr` 두 상태를 두고 스텝마다 필드 복사(객체 생성 없음). 렌더는 `alpha`로 보간
-  - 보간 확인용 **임시 점**(`PROBE`, 센터 서클 위를 돎) — 1.1에서 공으로 대체하며 삭제
-  - `DebugOverlayScene`(HUD 씬): FPS, 스텝 처리 시간, tick, 시간, 배속, 일시정지. 배포판에서도 동작
-  - `src/input/devKeys.ts`: `` ` `` / P / N / `[` `]`. 창 포커스를 잃으면 자동 일시정지
-  - `src/debug/tuningPanel.ts`: Tweakpane(개발 빌드만, 동적 import — dist에 포함 안 됨 확인). `TUNABLES` 섹션을 실시간 조절, "config 형식으로 복사"
-  - 헤드리스 Chrome + DevTools Protocol로 실제 키 입력을 보내 동작 확인(오버레이, 0.25×, 일시정지, N 3번 = 정확히 3스텝)
+- **0단계 — 기반** (2026-11-22): Vite 8 + TS 6.0 strict + Phaser 4.2.1 + ESLint/Prettier + Vitest, `npm run check`(typecheck → lint → format:check → test). 경기장 텍스처와 골대 레이어. GitHub Actions → Pages 배포(check 실패 시 배포 안 함). 고정 스텝 시계(`sim/loop.ts`)와 보간, 디버그 오버레이(`` ` ``), P/N/`[` `]`, Tweakpane(개발 빌드만). 배포판에서 오버레이 동작 확인.
+- **1.1 공 물리** (2026-11-22): `sim/ball.ts` 공중(중력·공기 저항)·바운드·굴러감, 월드 가장자리 반사. `sim/math/rolling.ts` 굴러감 해석해와 이분법(패스 속도용). 그림자 렌더링(`render/BallView.ts`). 개발 빌드 클릭 발사(Shift = 공중 볼, `sim/devLaunch.ts`).
+- **1.2 골대와 판정** (2026-11-22): `sim/goalFrame.ts` 포스트·크로스바(원기둥)·골망(안쪽은 크게 감속, 바깥 면은 막음). 공 물리 서브스텝 4회(30 m/s 슛이 포스트를 뚫지 않게). `sim/lines.ts` 이전·현재 위치 교차로 골·아웃 판정, `sim/rules.ts` 재시작 종류. 이벤트(`sim/events.ts`)와 HUD 배너(`scenes/HudScene.ts`).
+- **1.3 선수와 카메라** (2026-11-22): `sim/player.ts` 가속·감속·스프린트·속도별 회전 제한(입력과 보는 방향이 어긋나면 감속). `input/keyboard.ts`·`humanController.ts`(DOM `e.code`). `render/MatchCamera.ts` 공+속도×0.3초 목표, 데드존, 지수 감쇠, 월드 경계(줌 1.0 = 화면 너비 40m).
+- **1.4 드리블과 슛** (2026-11-22): `sim/dribble.ts` 컨트롤 조건, 드리블 터치, 몸 충돌, 볼 소유자. `sim/kick.ts` 파워 게이지 슛(속도·vz·오차가 power에 따라 증가, 시드 RNG). 킥 입력 버퍼 0.15초. 파워 게이지·디버그 월드 표시(컨트롤 반경, 속도 벡터).
+- **1.5 시나리오** (2026-11-22): `sim/scenarios.ts` freeplay·penalty(시작 배치와 골·아웃 뒤 재배치), `scenarioParams.ts` URL 파싱(잘못된 값은 기본값 + 콘솔 경고).
+- 1단계 완료 조건: 드리블해서 골 ✔(브라우저), 포스트·크로스바 반사 ✔(테스트·브라우저), 크로스바 위는 골 아님 ✔(테스트), `npm run check` ✔ (테스트 126개)
 
 ## 결정 기록
 
@@ -46,15 +29,26 @@
 | 2026-11-22 | TypeScript는 7.0이 아닌 `~6.0.3`으로 고정 | typescript-eslint 8.x가 `<6.1`만 지원. 지원되면 올린다 |
 | 2026-11-22 | Prettier는 `*.md`를 건드리지 않음 | 손으로 쓴 문서 형식(한글 표 정렬)을 유지하기 위해 |
 | 2026-11-22 | 시드 RNG는 mulberry32 | 상태가 32비트 정수 하나라 저장·복원(리플레이)이 쉬움 |
-| 2026-11-22 | 터치라인·골라인은 바깥 가장자리가 경계(±52.5, ±34)에 오도록 안쪽으로 그림. 나머지 라인은 중심선 기준 | 실제 규칙(라인은 구역에 포함)과 §3 판정식(공 전체가 52.5를 넘어야 아웃·골)에 맞춤 |
+| 2026-11-22 | 터치라인·골라인은 바깥 가장자리가 경계(±52.5, ±34)에 오도록 안쪽으로 그림 | 실제 규칙(라인은 구역에 포함)과 §3 판정식에 맞춤 |
 | 2026-11-22 | 시뮬레이션 1m = 월드 32px. Phaser 월드 원점 = 센터 스팟 | 40m 줌 기준 화면 1px ≈ 텍스처 1px, 텍스처가 4096 이내 |
-| 2026-11-22 | 키 입력은 Phaser 키보드 이벤트 대신 DOM `keydown`/`keyup`을 직접 쓰고 `e.code`로 판별 | Phaser 4.2.1 KeyboardPlugin이 같은 keydown을 여러 번 내보내는 경우 확인(아래 알려진 문제). `e.code`는 한글 입력 상태에서도 물리 키로 들어옴. 1.3 선수 조작 입력도 같은 방식으로 |
-| 2026-11-22 | Tweakpane 조절 대상은 `config.ts`의 `TUNABLES`에 등록, 해당 섹션은 `as const` 없이 | 실행 중 값 변경을 타입이 막지 않도록. 규격 등 고정값은 `as const` 유지 |
-| 2026-11-22 | 디버그 오버레이와 P/N/`[` `]` 키는 배포판에서도 켬 | 0단계 완료 조건(배포 URL에서 오버레이), 배포판 성능 확인용. 4.4 일시정지 메뉴 때 재검토 |
+| 2026-11-22 | 키 입력은 Phaser 키보드 이벤트 대신 DOM `keydown`/`keyup` + `e.code` | Phaser KeyboardPlugin 중복 발생(알려진 문제). `e.code`는 한글 입력 상태에서도 물리 키 |
+| 2026-11-22 | Tweakpane 조절 대상은 `config.ts`의 `TUNABLES`에 등록, 해당 섹션은 `as const` 없이 | 실행 중 값 변경을 타입이 막지 않도록 |
+| 2026-11-22 | 디버그 오버레이와 P/N/`[` `]` 키는 배포판에서도 켬 | 0단계 완료 조건, 배포판 성능 확인용. 4.4 일시정지 메뉴 때 재검토 |
+| 2026-11-22 | 프레임 시간은 Phaser `delta` 대신 `performance.now()`로 직접 잰다 | Phaser가 시작·포커스 복귀 후 120프레임과 포커스 없을 때 delta를 16.7ms로 잘라 60 FPS 미만에서 게임이 느려짐 |
+| 2026-11-22 | 공 물리는 스텝당 서브스텝 4회 (`BALL.SUBSTEPS`) | 빠른 공이 포스트·골망을 통과하지 않게. 라인 판정도 서브스텝마다 |
+| 2026-11-22 | 골·아웃 후 2초 뒤 시나리오대로 재배치 (`RULES.BALL_RESET_DELAY`) | 경기 상태 머신(4.1) 전까지 임시. freeplay는 공만 센터로, penalty는 공·키커 모두 |
+| 2026-11-22 | 마지막 터치가 없는 공(개발 도구로 찬 공)의 아웃은 홈이 찬 것으로 판정 | 재시작 종류를 정하기 위한 기본값 |
+| 2026-11-22 | 슛 조준: 방향키 위·아래(aimY 크기 > 0.3)로 해당 쪽 포스트 안쪽 0.6m, 중립이면 골문 가운데 | DESIGN §5 "가까운·먼 포스트 선택"을 화면 위·아래로 단순화. 3.6 골키퍼 후 재검토 |
+| 2026-11-22 | 킥 입력 버퍼(0.15초)를 2.5에서 1.4로 앞당김. 1단계에서는 모든 킥을 슛으로 처리 | 버퍼 없이는 드리블 중 슛 타이밍이 너무 빡빡함. 원터치 패스는 2.5에서 |
+| 2026-11-22 | **(승인 대기)** 드리블 터치 거리 `DRIBBLE.TOUCH_RADIUS` = 0.55m (DESIGN §4에는 없음: 컨트롤 가능하면 터치) | DESIGN대로 0.8m 경계에서 터치하면 공이 약 1.1m까지 앞서 나가 드리블 중 슛이 30~60% 순간에만 가능. 0.55m면 공이 0.55~0.83m에 머문다. 0.8로 두면 원래 동작 |
+| 2026-11-22 | **(승인 대기)** 킥 가능 거리 `DRIBBLE.KICK_RADIUS` = 0.9m (컨트롤 거리 0.8m와 별도) | 위와 함께: 일반 드리블 중에는 언제든 슛 가능, 스프린트 드리블은 자주 놓침 |
 
 ## 알려진 문제
 
-- 프로덕션 번들이 약 1.37MB(gzip 358KB)로 Vite의 500KB 경고가 뜬다. Phaser 자체 크기라서 지금은 무시한다. 필요하면 나중에 `chunkSizeWarningLimit`을 조정하거나 Phaser를 별도 청크로 분리한다.
+- 프로덕션 번들이 약 1.37MB(gzip 358KB)로 Vite의 500KB 경고가 뜬다. Phaser 자체 크기라서 지금은 무시한다.
 - 골대가 납작해 보인다: 골문이 화면 좌우에 있고 높이는 화면 위쪽으로 표현해서, 포스트·크로스바가 골라인과 같은 세로줄에 겹친다. 대안(예: z에 x 방향 기울기 추가) 검토 필요 — DESIGN §8 변경 사항이라 승인 후 진행.
-- (Claude Code 환경 한정) Git Bash에서 `cd /c/...` 후 `vitest`를 돌리면 Node의 현재 폴더가 소문자 `c:\`가 되어 모든 테스트가 `Cannot read properties of undefined (reading 'config')`로 실패한다. 경로 대소문자 차이로 vitest가 모듈을 두 번 불러오는 문제. `cd "C:/..."`(대문자)로 이동하거나 PowerShell에서 실행하면 정상. VS Code 터미널과 CI에는 영향 없음.
-- Phaser 4.2.1 KeyboardPlugin: 키보드 큐를 `POST_STEP`에서만 비우는데 한 스텝 안에서 큐를 여러 번 처리할 수 있고, 중복 방지는 직전 이벤트 1개와만 비교한다. 그래서 keydown·keyup이 같은 큐에 있으면 같은 keydown이 2~4번 발생했다(N 3번 → 8스텝). Phaser 키보드 이벤트(`keydown-X`)는 쓰지 않는다.
+- 전력 질주(8 m/s)로 멈춰 있는 공에 다가가면 상대 속도 8 > `CONTROL_MAX_REL_SPEED`(7)라 컨트롤하지 못하고 몸에 맞아 튕겨 나간다. DESIGN 수치대로의 동작인데, 의도한 것인지 2단계 플레이 테스트에서 확인 필요.
+- Tweakpane 패널(개발 빌드)이 화면 오른쪽 위를 가려 +x 골대가 일부 안 보인다. 패널 제목을 클릭하면 접힌다. 튜닝 섹션은 접힌 상태로 시작.
+- `config.ts`가 300줄을 넘었다(약 320줄). CLAUDE.md 규칙 7("모든 튜닝 수치는 한곳에")을 우선해 나누지 않았다.
+- (Claude Code 환경 한정) Git Bash에서 `cd /c/...` 후 `vitest`를 돌리면 Node의 현재 폴더가 소문자 `c:\`가 되어 모든 테스트가 `Cannot read properties of undefined (reading 'config')`로 실패한다. `cd "C:/..."`(대문자)나 PowerShell에서는 정상. VS Code 터미널과 CI에는 영향 없음.
+- Phaser 4.2.1 KeyboardPlugin: 키보드 큐를 `POST_STEP`에서만 비우는데 한 스텝 안에서 큐를 여러 번 처리할 수 있고, 중복 방지는 직전 이벤트 1개와만 비교해 같은 keydown이 2~4번 발생했다. Phaser 키보드 이벤트(`keydown-X`)는 쓰지 않는다.
