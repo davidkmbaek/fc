@@ -98,6 +98,7 @@ export function goalkeeperDistribute(
   i: PlayerIntent,
   kick: KickIntent,
   rng: Rng,
+  maxPassDist: number,
 ): void {
   stop(i);
   if (s.ball.heldTime < AI_GK.HOLD_TIME) return;
@@ -107,7 +108,7 @@ export function goalkeeperDistribute(
   for (const t of s.players) {
     if (t.team !== p.team || t.id === p.id) continue;
     const d = Math.hypot(t.x - p.x, t.y - p.y);
-    if (d < PASS.MIN_DIST || d > AI.MAX_PASS_DIST) continue;
+    if (d < PASS.MIN_DIST || d > maxPassDist) continue;
     const sc = safetyScore(passSafety(p.x, p.y, t.x, t.y, typicalPassSpeed(d), opponents));
     if (sc > bestScore) {
       bestScore = sc;

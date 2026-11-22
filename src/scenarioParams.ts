@@ -1,5 +1,9 @@
-import { SIM } from './config';
+import { DIFFICULTY, type Difficulty, SIM } from './config';
 import { isScenarioId, type ScenarioId } from './sim/scenarios';
+
+function isDifficulty(v: string): v is Difficulty {
+  return Object.hasOwn(DIFFICULTY, v);
+}
 
 /** URL에 시나리오가 없을 때 (2단계부터 5:5) */
 export const DEFAULT_SCENARIO: ScenarioId = 'team';
@@ -7,12 +11,14 @@ export const DEFAULT_SCENARIO: ScenarioId = 'team';
 export interface ScenarioParams {
   scenario: ScenarioId;
   seed: number;
+  /** 상대 팀 AI 난이도 (우리 팀 AI 동료는 항상 normal) */
+  difficulty: Difficulty;
   /** 잘못된 값이 있었다면 그 설명 (콘솔 경고용) */
   warnings: string[];
 }
 
 /**
- * URL 쿼리 `?scenario=team|freeplay|penalty&seed=123`을 읽는다. DESIGN.md §9
+ * URL 쿼리 `?scenario=team|freeplay|penalty|tackle&seed=123&difficulty=easy|normal|hard`를 읽는다. DESIGN.md §9
  * 모르는 시나리오·잘못된 시드는 기본값(DEFAULT_SCENARIO, SIM.DEFAULT_SEED)으로 바꾸고 경고를 남긴다.
  */
 export function parseScenarioParams(search: string): ScenarioParams {
@@ -34,5 +40,12 @@ export function parseScenarioParams(search: string): ScenarioParams {
     else warnings.push(`잘못된 seed "${rawSeed}" → ${SIM.DEFAULT_SEED}`);
   }
 
-  return { scenario, seed, warnings };
+  let difficulty: Difficulty = 'normal';
+  const rawDiff = q.get('difficulty');
+  if (rawDiff !== null) {
+    if (isDifficulty(rawDiff)) difficulty = rawDiff;
+    else warnings.push(`잘못된 difficulty "${rawDiff}" → normal`);
+  }
+
+  return { scenario, seed, difficulty, warnings };
 }

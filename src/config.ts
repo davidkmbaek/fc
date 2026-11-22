@@ -245,11 +245,6 @@ export const AI = {
   PASS_RECEIVER_ZONE: 1.5,
   PASS_SAFE_MARGIN: 0.6,
 
-  /** 판단 주기 (초). 이동은 매 스텝 적용. 선수별로 엇갈려 판단한다 */
-  DECISION_INTERVAL: 0.15,
-  /** 팀 모드가 바뀐 뒤 반응하기까지 (초, 난이도) */
-  REACTION_TIME: 0.25,
-
   /** 홈 위치: 공격 시 앞으로(m), 공 x를 따라가는 비율, 폭을 공 쪽으로 좁히는 비율 */
   ATTACK_PUSH: 12,
   BALL_FOLLOW_X: 0.4,
@@ -264,7 +259,7 @@ export const AI = {
 
   /** 슛: 상대 골문까지 이 거리(m) 안에서만 고려, 기대값이 THRESHOLD를 넘으면 찬다 */
   SHOT_RANGE: 26,
-  SHOT_THRESHOLD: 0.25,
+  SHOT_THRESHOLD: 0.18,
   /** 슛을 막는 수비수 한 명당 기대값 감소 비율 */
   SHOT_BLOCKER_PENALTY: 0.35,
   /** 압박: 상대가 이 시간(초) 안에 공에 닿을 수 있으면 압박받는 중 */
@@ -278,13 +273,8 @@ export const AI = {
   DRIBBLE_SPREAD_DEG: 70,
   DRIBBLE_STEP_DEG: 17.5,
 
-  /** 압박 선수의 태클: 공까지 STAND_RANGE × 이 비율 안이면 판단마다 이 확률로 태클 */
+  /** 압박 선수의 태클: 공까지 STAND_RANGE × 이 비율 안이면 판단마다 TACKLE_CHANCE(난이도) 확률로 태클 */
   TACKLE_RANGE_FACTOR: 0.8,
-  TACKLE_CHANCE: 0.3,
-  /** 킥 방향 노이즈 최대 (°, 난이도) */
-  KICK_NOISE_DEG: 3,
-  /** 패스를 고려하는 최대 거리 (m, 난이도) */
-  MAX_PASS_DIST: 35,
   /** 공 소유자가 판단하기 전에 공에 이 비율 × KICK_RADIUS까지 다가간다 */
   OWNER_APPROACH_FACTOR: 0.85,
 
@@ -312,6 +302,44 @@ export const HEADLESS = {
   /** 기본 경기 시간 (초, 시뮬레이션 시간) */
   MATCH_SECONDS: 300,
 } as const;
+
+/**
+ * AI 난이도. DESIGN.md §7 난이도 파라미터
+ * - REACTION_TIME: 팀 모드(공격·수비)가 바뀐 뒤 반응하기까지 (초)
+ * - DECISION_INTERVAL: 판단 주기 (초). 이동은 매 스텝 적용, 선수별로 엇갈려 판단
+ * - KICK_NOISE_DEG: 패스 방향 노이즈 최대 (°)
+ * - MAX_PASS_DIST: 패스를 고려하는 최대 거리 (m)
+ * - TACKLE_CHANCE: 압박 선수가 태클 범위에서 판단마다 태클할 확률
+ * - PRESS_SPRINT: 압박할 때 스프린트 (1) / 달리기 (0)
+ */
+export const DIFFICULTY = {
+  easy: {
+    REACTION_TIME: 0.4,
+    DECISION_INTERVAL: 0.25,
+    KICK_NOISE_DEG: 7,
+    MAX_PASS_DIST: 22,
+    TACKLE_CHANCE: 0.15,
+    PRESS_SPRINT: 0,
+  },
+  normal: {
+    REACTION_TIME: 0.25,
+    DECISION_INTERVAL: 0.15,
+    KICK_NOISE_DEG: 3,
+    MAX_PASS_DIST: 35,
+    TACKLE_CHANCE: 0.3,
+    PRESS_SPRINT: 1,
+  },
+  hard: {
+    REACTION_TIME: 0.15,
+    DECISION_INTERVAL: 0.1,
+    KICK_NOISE_DEG: 1.5,
+    MAX_PASS_DIST: 45,
+    TACKLE_CHANCE: 0.45,
+    PRESS_SPRINT: 1,
+  },
+} as const;
+export type Difficulty = keyof typeof DIFFICULTY;
+export type AiParams = (typeof DIFFICULTY)[Difficulty];
 
 /** 골키퍼 AI. DESIGN.md §7 골키퍼 */
 export const AI_GK = {

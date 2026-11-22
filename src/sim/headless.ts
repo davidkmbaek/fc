@@ -1,4 +1,4 @@
-import { HEADLESS, SIM } from '../config';
+import { DIFFICULTY, type Difficulty, HEADLESS, SIM } from '../config';
 import { MatchAi } from './ai/matchAi';
 import { createIntent } from './intent';
 import { Simulation } from './Simulation';
@@ -23,9 +23,14 @@ export interface MatchStats {
  * AI 대 AI 경기를 브라우저 없이 돌린다. DESIGN.md §9 헤드리스 시뮬레이션, §10 시뮬레이션 테스트
  * 경기 상태 머신(4.1) 전이라 골·아웃 뒤에는 시나리오대로 킥오프 자리에서 다시 시작한다.
  */
-export function runHeadlessMatch(seed: number, seconds: number): MatchStats {
+export function runHeadlessMatch(
+  seed: number,
+  seconds: number,
+  home: Difficulty = 'normal',
+  away: Difficulty = 'normal',
+): MatchStats {
   const sim = new Simulation(SIM.DT, seed, 'team');
-  const ai = new MatchAi(SIM.DT, seed, sim.geo);
+  const ai = new MatchAi(SIM.DT, seed, sim.geo, [DIFFICULTY[home], DIFFICULTY[away]]);
   const intents = sim.curr.players.map(() => createIntent());
   const st: MatchStats = {
     seed,

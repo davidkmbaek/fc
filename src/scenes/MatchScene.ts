@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { DEBUG, KEYS, PLAYER_STYLE, SIM } from '../config';
+import { DEBUG, DIFFICULTY, KEYS, PLAYER_STYLE, SIM } from '../config';
 import { enableBallLauncher } from '../debug/ballLauncher';
 import { nextTimeScale } from '../debug/timeScale';
 import { bindDevKeys } from '../input/devKeys';
@@ -62,7 +62,12 @@ export class MatchScene extends Phaser.Scene {
     const ball = this.sim.curr.ball;
     const startId = nearestPlayerId(this.sim.curr.players, TEAM_HOME, ball.x, ball.y);
     this.human = new HumanSide(this.keyboard, SIM.DT, TEAM_HOME, startId, this.sim.curr);
-    this.ai = this.sim.scenario.ai ? new MatchAi(SIM.DT, params.seed, this.sim.geo) : null;
+    this.ai = this.sim.scenario.ai
+      ? new MatchAi(SIM.DT, params.seed, this.sim.geo, [
+          DIFFICULTY.normal,
+          DIFFICULTY[params.difficulty],
+        ])
+      : null;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.keyboard.destroy());
 
     const geo = this.sim.geo;

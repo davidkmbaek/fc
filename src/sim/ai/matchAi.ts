@@ -1,4 +1,4 @@
-import { AI, DRIBBLE, TACKLE } from '../../config';
+import { AI, type AiParams, DRIBBLE, TACKLE } from '../../config';
 import { possessorId } from '../dribble';
 import type { KickIntent, PlayerIntent } from '../intent';
 import { Rng } from '../rng';
@@ -36,7 +36,8 @@ interface TeamBrain {
 export class MatchAi {
   private readonly rng: Rng;
   private readonly pred: BallPrediction;
-  private readonly decisionSteps: number;
+  /** 팀별 판단 주기 (스텝) */
+  private readonly decisionSteps: [number, number];
   private readonly teams: TeamBrain[] = [0, 1].map((): TeamBrain => ({
     mode: 'loose',
     pendingMode: 'loose',
@@ -55,14 +56,17 @@ export class MatchAi {
   private readonly marks: number[] = [];
   private readonly spot = { x: 0, y: 0 };
 
+  /** params[팀] = 그 팀의 난이도 파라미터 */
   constructor(
     dt: number,
     seed: number,
     private readonly geo: PitchGeometry,
+    private readonly params: readonly [AiParams, AiParams],
   ) {
     this.rng = new Rng((seed ^ AI_SEED_SALT) >>> 0);
     this.pred = new BallPrediction(dt);
-    this.decisionSteps = Math.max(1, Math.round(AI.DECISION_INTERVAL / dt));
+    const steps = (p: AiParams): number => Math.max(1, Math.round(p.DECISION_INTERVAL / dt));
+    this.decisionSteps = [steps(params[0]), steps(params[1])];
     this.supportSteps = Math.max(1, Math.round(AI.SUPPORT_INTERVAL / dt));
   }
 
@@ -83,11 +87,11 @@ export class MatchAi {
       }
       const brain = this.teams[p.team] as TeamBrain;
       const dir = attackDir(p.team, s.homeAttackDir);
-      const decide = (s.tick + p.id) % this.decisionSteps === 0;
+      const decide = (s.tick + p.id) % this.decisionSteps[p.team === 0 ? 0 : 1] === 0;
 
       if (b.heldBy === p.id) {
         const kick = (this.kicks[p.id] ??= { type: 'pass', power: 0, aimX: 0, aimY: 0 });
-        goalkeeperDistribute(p, s, dir, i, kick, this.rng);
+        goalkeeperDistribute(p, s, dir, i, kick, this.rng, this.param(p.team).MAX_PASS_DIST);
       } else if (owner === p.id) this.ownBall(p, s, dir, i, decide);
       else if (b.passTarget === p.id) this.receive(p, i);
       else if (p.role === 'GK') goalkeeper(p, s, dir, this.geo, i, this.ip, this.pred.samples);
@@ -126,6 +130,10 @@ export class MatchAi {
     moveTo(i, p, this.home.x, this.home.y, true);
   }
 
+  private param(team: number): AiParams {
+    return this.params[team === 0 ? 0 : 1];
+  }
+
   /** 팀 모드(반응 시간 적용)와 공 쫓을 선수·압박할 선수를 정한다 */
   private updateTeam(s: SimState, team: number): void {
     const brain = this.teams[team] as TeamBrain;
@@ -134,10 +142,11 @@ export class MatchAi {
       brain.pendingMode = now;
       brain.pendingSince = s.time;
     }
-    if (brain.mode !== brain.pendingMode && s.time - brain.pendingSince >= AI.REACTION_TIME) {
+    const params = this.param(team);
+    if (brain.mode !== brain.pendingMode && s.time - brain.pendingSince >= params.REACTION_TIME) {
       brain.mode = brain.pendingMode;
     }
-    if (s.tick % this.decisionSteps !== team) return;
+    if (s.tick % this.decisionSteps[team === 0 ? 0 : 1] !== team) return;
 
     let bestChase = Infinity;
     let bestPress = Infinity;
@@ -178,7 +187,8 @@ export class MatchAi {
     }
     const kick = (this.kicks[p.id] ??= { type: 'pass', power: 0, aimX: 0, aimY: 0 });
     const dd = (this.dribbleDirs[p.id] ??= { angle: p.facing });
-    if (decide && decideOwner(p, s.players, s.ball, dir, this.geo, this.rng, i, kick, dd)) {
+    const params = this.param(p.team);
+    if (decide && decideOwner(p, s.players, b, dir, this.geo, this.rng, i, kick, dd, params)) {
       stop(i);
       return;
     }
@@ -200,10 +210,11 @@ export class MatchAi {
   /** 압박: 공으로 달려가 가까우면 확률로 스탠딩 태클 */
   private press(p: PlayerState, s: SimState, i: PlayerIntent, decide: boolean): void {
     const b = s.ball;
-    moveTo(i, p, b.x, b.y, true, true);
+    const params = this.param(p.team);
+    moveTo(i, p, b.x, b.y, params.PRESS_SPRINT === 1, true);
     const d = Math.hypot(b.x - p.x, b.y - p.y);
     if (decide && b.heldBy < 0 && d < TACKLE.STAND_RANGE * AI.TACKLE_RANGE_FACTOR) {
-      if (this.rng.next() < AI.TACKLE_CHANCE) i.tackle = 'stand';
+      if (this.rng.next() < params.TACKLE_CHANCE) i.tackle = 'stand';
     }
   }
 }

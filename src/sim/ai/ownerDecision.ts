@@ -1,4 +1,4 @@
-import { AI, DRIBBLE, PASS } from '../../config';
+import { AI, type AiParams, DRIBBLE, PASS } from '../../config';
 import type { BallState } from '../ball';
 import type { KickIntent, PlayerIntent } from '../intent';
 import { degToRad } from '../math/angle';
@@ -37,8 +37,8 @@ export function shotValue(
 }
 
 /** 킥 방향에 난이도 노이즈를 더한 조준 벡터 */
-function noisyAim(dx: number, dy: number, rng: Rng, out: KickIntent): void {
-  const a = Math.atan2(dy, dx) + degToRad(AI.KICK_NOISE_DEG) * (rng.next() * 2 - 1);
+function noisyAim(dx: number, dy: number, noiseDeg: number, rng: Rng, out: KickIntent): void {
+  const a = Math.atan2(dy, dx) + degToRad(noiseDeg) * (rng.next() * 2 - 1);
   out.aimX = Math.cos(a);
   out.aimY = Math.sin(a);
 }
@@ -57,6 +57,7 @@ export function decideOwner(
   intent: PlayerIntent,
   kick: KickIntent,
   dribbleDir: { angle: number },
+  params: AiParams,
 ): boolean {
   const opponents = players.filter((o) => o.team !== p.team);
 
@@ -85,7 +86,7 @@ export function decideOwner(
     if (t.team !== p.team || t.id === p.id || t.action !== 'none') continue;
     if (t.role === 'GK' && !pressure) continue;
     const d = Math.hypot(t.x - b.x, t.y - b.y);
-    if (d < PASS.MIN_DIST || d > AI.MAX_PASS_DIST) continue;
+    if (d < PASS.MIN_DIST || d > params.MAX_PASS_DIST) continue;
     const sc = safetyScore(passSafety(b.x, b.y, t.x, t.y, typicalPassSpeed(d), opponents));
     const gain = (t.x - b.x) * attackDir;
     if (gain > AI.FORWARD_MIN_GAIN && sc > AI.FORWARD_MIN_SAFETY) {
@@ -107,7 +108,7 @@ export function decideOwner(
   if (target) {
     kick.type = 'pass';
     kick.power = 0.5;
-    noisyAim(target.x - b.x, target.y - b.y, rng, kick);
+    noisyAim(target.x - b.x, target.y - b.y, params.KICK_NOISE_DEG, rng, kick);
     intent.kick = kick;
     return true;
   }

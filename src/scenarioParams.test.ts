@@ -7,6 +7,7 @@ describe('parseScenarioParams', () => {
     expect(parseScenarioParams('')).toEqual({
       scenario: 'team',
       seed: SIM.DEFAULT_SEED,
+      difficulty: 'normal',
       warnings: [],
     });
   });
@@ -24,6 +25,14 @@ describe('parseScenarioParams', () => {
     expect(p.scenario).toBe('team');
     expect(p.seed).toBe(SIM.DEFAULT_SEED);
     expect(p.warnings).toHaveLength(2);
+  });
+
+  it('difficulty를 읽고, 잘못된 값은 normal', () => {
+    expect(parseScenarioParams('?difficulty=hard').difficulty).toBe('hard');
+    expect(parseScenarioParams('?difficulty=toString').difficulty).toBe('normal');
+    const p = parseScenarioParams('?difficulty=god');
+    expect(p.difficulty).toBe('normal');
+    expect(p.warnings).toHaveLength(1);
   });
 
   it('음수·소수 시드는 잘못된 값', () => {
