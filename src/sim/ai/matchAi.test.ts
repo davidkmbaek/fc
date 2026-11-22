@@ -61,7 +61,7 @@ describe('AI 대 AI (헤드리스)', () => {
     expect(r.passes[1]).toBeGreaterThan(3);
     expect(r.possession[0]).toBeGreaterThan(0.2);
     expect(r.possession[1]).toBeGreaterThan(0.2);
-  });
+  }, 20_000); // 정식 경기 한 판은 무겁다
 
   it('결정성: 같은 시드면 같은 결과', () => {
     expect(runHeadlessMatch(5, 30)).toEqual(runHeadlessMatch(5, 30));

@@ -7,6 +7,8 @@ import { TEAM_AWAY, TEAM_HOME } from './rules';
 import { Simulation } from './Simulation';
 
 const DT = 1 / 60;
+/** 정식 경기 한 판(약 370초 시뮬레이션)은 무거워서 기본 5초 제한보다 넉넉히 */
+const FULL_MATCH_TIMEOUT_MS = 20_000;
 
 function setup(): { sim: Simulation; intents: PlayerIntent[] } {
   const sim = new Simulation(DT, 1, 'match');
@@ -187,10 +189,14 @@ describe('전·후반', () => {
 });
 
 describe('AI 대 AI 정식 경기 (4단계 완료 조건)', () => {
-  it('손대지 않아도 킥오프부터 종료 휘슬까지 오류·정체 없이 끝난다', () => {
-    const r = runHeadlessMatch(3);
-    expect(r.errors).toEqual([]);
-    expect(r.finished).toBe(true);
-    expect(r.restarts.kickOff).toBeGreaterThanOrEqual(2); // 전반 + 후반
-  });
+  it(
+    '손대지 않아도 킥오프부터 종료 휘슬까지 오류·정체 없이 끝난다',
+    () => {
+      const r = runHeadlessMatch(3);
+      expect(r.errors).toEqual([]);
+      expect(r.finished).toBe(true);
+      expect(r.restarts.kickOff).toBeGreaterThanOrEqual(2); // 전반 + 후반
+    },
+    FULL_MATCH_TIMEOUT_MS,
+  );
 });
