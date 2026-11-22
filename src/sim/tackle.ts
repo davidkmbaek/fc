@@ -1,4 +1,4 @@
-import { DRIBBLE, PLAYER, TACKLE } from '../config';
+import { AI_GK, DRIBBLE, PLAYER, TACKLE } from '../config';
 import type { BallState } from './ball';
 import { markTouch, possessorId } from './dribble';
 import { angleDiff } from './math/angle';
@@ -45,7 +45,8 @@ export function standTackle(
   time: number,
 ): 'won' | 'failed' {
   const d = Math.hypot(b.x - p.x, b.y - p.y);
-  const inRange = d <= TACKLE.STAND_RANGE && b.z < DRIBBLE.CONTROL_MAX_Z;
+  // 골키퍼가 손에 든 공은 뺏을 수 없다
+  const inRange = d <= TACKLE.STAND_RANGE && b.z < DRIBBLE.CONTROL_MAX_Z && b.heldBy < 0;
   const owner = players[possessorId(players, b)];
   const carrier = owner && owner.team !== p.team ? owner : undefined;
   const won = inRange && rng.next() < (carrier ? standTackleChance(p, d, carrier) : 1);
@@ -78,9 +79,12 @@ export function standTackle(
 /** 슬라이딩 시작: 보는 방향(입력이 있으면 입력 방향)으로 SLIDE_DIST만큼 미끄러진다 */
 export function startSlide(p: PlayerState, dirX: number, dirY: number): void {
   if (Math.hypot(dirX, dirY) >= PLAYER.MOVE_DEADZONE) p.facing = Math.atan2(dirY, dirX);
-  p.speed = TACKLE.SLIDE_SPEED;
+  // 골키퍼의 슬라이딩 = 다이빙 (손으로 처리: goalkeeping.ts)
+  const gk = p.role === 'GK';
+  const speed = gk ? AI_GK.DIVE_SPEED : TACKLE.SLIDE_SPEED;
+  p.speed = speed;
   p.slideHitBall = false;
-  setAction(p, 'slide', TACKLE.SLIDE_DIST / TACKLE.SLIDE_SPEED);
+  setAction(p, 'slide', (gk ? AI_GK.DIVE_DIST : TACKLE.SLIDE_DIST) / speed);
 }
 
 /**
@@ -100,6 +104,7 @@ export function stepSlide(
   p.vy = fy * p.speed;
   p.x += p.vx * dt;
   p.y += p.vy * dt;
+  if (p.role === 'GK' || b.heldBy >= 0) return null;
 
   if (!p.slideHitBall) {
     const reachX = p.x + fx * PLAYER.RADIUS;
@@ -136,7 +141,7 @@ export function tickAction(p: PlayerState, dt: number): void {
   if (p.actionTime > 0) return;
   if (p.action === 'slide') {
     p.speed = 0;
-    setAction(p, 'stunned', TACKLE.SLIDE_RECOVERY);
+    setAction(p, 'stunned', p.role === 'GK' ? AI_GK.DIVE_RECOVERY : TACKLE.SLIDE_RECOVERY);
   } else {
     setAction(p, 'none', 0);
   }

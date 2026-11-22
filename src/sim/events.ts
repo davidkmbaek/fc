@@ -36,4 +36,5 @@ export type SimEvent =
       /** won: 공을 빼앗음/쳐냄, failed: 헛손질, fall: 사람을 먼저 맞혀 둘 다 넘어짐 */
       result: 'won' | 'failed' | 'fall';
     }
+  | { type: 'save'; tick: number; playerId: number; kind: 'catch' | 'parry' }
   | { type: 'ballReset'; tick: number };

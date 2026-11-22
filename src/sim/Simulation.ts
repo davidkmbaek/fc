@@ -22,6 +22,7 @@ import { Rng } from './rng';
 import { attackDir, restartFor, scoringTeam } from './rules';
 import { getScenario, type Scenario, type ScenarioId } from './scenarios';
 import { standTackle, startSlide, stepSlide, tickAction } from './tackle';
+import { goalkeeperHands, holdBall } from './goalkeeping';
 
 export interface SimState {
   /** 지금까지 실행한 스텝 수 */
@@ -131,11 +132,27 @@ export class Simulation {
     }
     collidePlayers(s.players, owner);
     for (const p of s.players) {
+      const b = s.ball;
+      const save = goalkeeperHands(p, b, this.ownGoalX(p), this.geo, this.rng, s.time);
+      if (save) {
+        this.events.push({ type: 'save', tick: s.tick, playerId: p.id, kind: save });
+        continue;
+      }
+      if (b.heldBy >= 0) {
+        // 골키퍼가 든 공: 들고 있는 골키퍼만 배급(킥)할 수 있다
+        if (b.heldBy === p.id) this.distribute(p, intents[p.id] ?? IDLE_INTENT);
+        continue;
+      }
       if (p.action === 'none') this.playerBallContact(p, intents[p.id] ?? IDLE_INTENT);
-      else collideBallWithPlayer(s.ball, p, s.time);
+      else collideBallWithPlayer(b, p, s.time);
     }
 
-    this.stepBallWithCollisions();
+    const holder = s.players[s.ball.heldBy];
+    if (holder && holder.action === 'none') holdBall(s.ball, holder, this.dt);
+    else {
+      s.ball.heldBy = -1;
+      this.stepBallWithCollisions();
+    }
     bounceOffWorldEdge(s.ball, this.geo.worldHalfLength, this.geo.worldHalfWidth);
   }
 
@@ -155,6 +172,22 @@ export class Simulation {
     result: 'won' | 'failed' | 'fall',
   ): void {
     this.events.push({ type: 'tackle', tick: this.curr.tick, playerId: p.id, kind, result });
+  }
+
+  private ownGoalX(p: PlayerState): number {
+    return -attackDir(p.team, this.curr.homeAttackDir) * this.geo.halfLength;
+  }
+
+  /** 골키퍼 배급: 든 공을 내려놓고 킥 의도대로 찬다(던지기·차기) */
+  private distribute(p: PlayerState, intent: PlayerIntent): void {
+    if (!intent.kick) return;
+    const b = this.curr.ball;
+    b.heldBy = -1;
+    b.z = 0;
+    p.kickBuffer = 0;
+    copyKick(p.kick, intent.kick);
+    p.kickBuffer = DRIBBLE.KICK_BUFFER;
+    this.playerBallContact(p, IDLE_INTENT);
   }
 
   /** 킥 → 받기·드리블 터치 → 몸 충돌 순으로 선수와 공의 접촉을 처리한다 */

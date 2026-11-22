@@ -6,7 +6,7 @@ import { attackDir } from '../rules';
 import type { SimState } from '../Simulation';
 import type { PitchGeometry } from '../pitch';
 import type { PlayerState } from '../player';
-import { goalkeeper } from './goalkeeper';
+import { goalkeeper, goalkeeperDistribute } from './goalkeeper';
 import { type Intercept, interceptPoint } from './intercept';
 import { decideOwner } from './ownerDecision';
 import { BallPrediction } from './predict';
@@ -76,7 +76,10 @@ export class MatchAi {
       const dir = attackDir(p.team, s.homeAttackDir);
       const decide = (s.tick + p.id) % this.decisionSteps === 0;
 
-      if (owner === p.id) this.ownBall(p, s, dir, i, decide);
+      if (b.heldBy === p.id) {
+        const kick = (this.kicks[p.id] ??= { type: 'pass', power: 0, aimX: 0, aimY: 0 });
+        goalkeeperDistribute(p, s, dir, i, kick, this.rng);
+      } else if (owner === p.id) this.ownBall(p, s, dir, i, decide);
       else if (b.passTarget === p.id) this.receive(p, i);
       else if (p.role === 'GK') goalkeeper(p, s, dir, this.geo, i, this.ip, this.pred.samples);
       else if (brain.mode === 'loose' && brain.chaserId === p.id) this.chase(p, i);
@@ -159,7 +162,7 @@ export class MatchAi {
     const b = s.ball;
     moveTo(i, p, b.x, b.y, true, true);
     const d = Math.hypot(b.x - p.x, b.y - p.y);
-    if (decide && d < TACKLE.STAND_RANGE * AI.TACKLE_RANGE_FACTOR) {
+    if (decide && b.heldBy < 0 && d < TACKLE.STAND_RANGE * AI.TACKLE_RANGE_FACTOR) {
       if (this.rng.next() < AI.TACKLE_CHANCE) i.tackle = 'stand';
     }
   }

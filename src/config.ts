@@ -303,8 +303,34 @@ export const AI_GK = {
   OUT_PER_M: 0.08,
   MIN_OUT: 0.5,
   MAX_OUT: 4,
-  /** 페널티 에어리어 안의 공이 이 속도(m/s) 미만이면 나가서 처리 (빠른 공은 3.6 다이빙) */
+  /** 페널티 에어리어 안의 공이 이 속도(m/s) 미만이면 나가서 처리 (빠른 공은 다이빙) */
   CLAIM_MAX_BALL_SPEED: 8,
+  /** 손이 닿는 거리 (m, 선수 중심에서): 서 있을 때 / 다이빙 중 */
+  REACH: 1.0,
+  DIVE_REACH: 1.7,
+  /** 이 높이(m) 미만의 공만 잡거나 쳐낼 수 있다 */
+  MAX_Z: 2.5,
+  /** 이 속도(m/s) 미만이면 잡고, 이상이면 쳐낸다 */
+  CATCH_SPEED: 16,
+  /** 아주 빠른 공(이 속도 이상)이 손끝(reach의 MISS_EDGE 비율 밖)에 닿으면 MISS_CHANCE 확률로 놓친다 */
+  MISS_SPEED: 20,
+  MISS_EDGE: 0.75,
+  MISS_CHANCE: 0.5,
+  /** 쳐낸 공: 골문 반대 방향 속도 비율, 옆으로 튕기는 속도 범위 (m/s) */
+  PARRY_KEEP: 0.3,
+  PARRY_SIDE_MIN: 3,
+  PARRY_SIDE_MAX: 7,
+  /** 잡은 공을 들고 있는 높이 (m) */
+  HOLD_Z: 0.8,
+  /** 잡은 공을 들고 있는 시간 (초) 뒤 배급 */
+  HOLD_TIME: 1.5,
+  /** 다이빙: 속도·거리·이후 회복 (초) */
+  DIVE_SPEED: 6.5,
+  DIVE_DIST: 2.2,
+  DIVE_RECOVERY: 0.7,
+  /** 공이 이 시간(초) 안에 골라인에 닿고 이 속도(m/s) 이상일 때 다이빙을 고려 */
+  DIVE_TRIGGER_TIME: 0.7,
+  DIVE_MIN_BALL_SPEED: 8,
 };
 
 /** 경기 규칙 */

@@ -16,6 +16,10 @@ export interface BallState {
   lastTouchTime: number;
   /** 이 공을 받을 동료 id (패스 직후 설정, 누가 건드리면 -1). 선수 자동 전환·AI 받기용 */
   passTarget: number;
+  /** 공을 손에 든 골키퍼 id (-1 = 없음). 들고 있는 동안 공 물리는 멈춘다 */
+  heldBy: number;
+  /** 골키퍼가 공을 든 지 지난 시간 (초) */
+  heldTime: number;
 }
 
 export function createBall(x = 0, y = 0): BallState {
@@ -30,6 +34,8 @@ export function createBall(x = 0, y = 0): BallState {
     lastTouchTeam: -1,
     lastTouchTime: 0,
     passTarget: -1,
+    heldBy: -1,
+    heldTime: 0,
   };
 }
 
@@ -44,6 +50,8 @@ export function copyBall(dst: BallState, src: BallState): void {
   dst.lastTouchTeam = src.lastTouchTeam;
   dst.lastTouchTime = src.lastTouchTime;
   dst.passTarget = src.passTarget;
+  dst.heldBy = src.heldBy;
+  dst.heldTime = src.heldTime;
 }
 
 export function isAirborne(b: BallState): boolean {
