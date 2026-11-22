@@ -69,7 +69,22 @@ export const PLAYER = {
   TURN_RATE_SPRINT_DEG: 270,
   /** 이 크기 미만의 이동 입력은 무시 */
   MOVE_DEADZONE: 0.15,
+  /** 공을 가진 선수가 다른 선수와 부딪히면 속력에 이 값을 곱한다 ("잠깐 느려진다") */
+  BUMP_SPEED_FACTOR: 0.6,
 };
+
+/**
+ * 5:5 포메이션 GK-2-1-1. DESIGN.md §7
+ * +x 쪽으로 공격하는 팀 기준, 킥오프 때 자기 진영 위치(m). 상대 팀은 x를 뒤집는다.
+ * 공격수는 센터 서클(9.15m) 밖. 킥오프하는 팀의 공격수는 시나리오가 공 옆으로 옮긴다.
+ */
+export const FORMATION_5 = [
+  { role: 'GK', x: -50, y: 0 },
+  { role: 'DF', x: -32, y: -12 },
+  { role: 'DF', x: -32, y: 12 },
+  { role: 'MF', x: -18, y: 0 },
+  { role: 'FW', x: -10, y: 0 },
+] as const;
 
 /** 볼 컨트롤과 드리블. DESIGN.md §4 */
 export const DRIBBLE = {
@@ -270,6 +285,8 @@ export const KEYS = {
 export const PLAYER_STYLE = {
   HOME_COLOR: 0xd32f2f,
   AWAY_COLOR: 0x1e5fc0,
+  HOME_GK_COLOR: 0xffa000,
+  AWAY_GK_COLOR: 0x2e9e4f,
   OUTLINE_COLOR: 0x111111,
   OUTLINE_PX: 2,
   /** 보는 방향 표시 (흰 삼각형) 길이 (m) */

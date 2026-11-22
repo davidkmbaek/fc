@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { PLAYER, PLAYER_STYLE, RENDER } from '../config';
 import { angleDiff } from '../sim/math/angle';
 import { lerp } from '../sim/math/scalar';
-import type { PlayerState } from '../sim/player';
+import type { PlayerState, Role } from '../sim/player';
 import { TEAM_HOME } from '../sim/rules';
 import { mToPx, worldPxX, worldPxY } from './coords';
 
@@ -17,6 +17,7 @@ export class PlayerView {
   constructor(
     scene: Phaser.Scene,
     team: number,
+    role: Role,
     private readonly worldHalfWidth: number,
   ) {
     const r = mToPx(PLAYER.RADIUS);
@@ -24,7 +25,15 @@ export class PlayerView {
       .circle(0, 0, r, 0x000000, PLAYER_STYLE.SHADOW_ALPHA)
       .setDepth(RENDER.DEPTH.SHADOWS);
 
-    const color = team === TEAM_HOME ? PLAYER_STYLE.HOME_COLOR : PLAYER_STYLE.AWAY_COLOR;
+    const home = team === TEAM_HOME;
+    const color =
+      role === 'GK'
+        ? home
+          ? PLAYER_STYLE.HOME_GK_COLOR
+          : PLAYER_STYLE.AWAY_GK_COLOR
+        : home
+          ? PLAYER_STYLE.HOME_COLOR
+          : PLAYER_STYLE.AWAY_COLOR;
     const disc = scene.add
       .circle(0, 0, r, color)
       .setStrokeStyle(PLAYER_STYLE.OUTLINE_PX, PLAYER_STYLE.OUTLINE_COLOR);

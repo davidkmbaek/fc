@@ -1,5 +1,6 @@
 import { BALL, DRIBBLE, RULES } from '../config';
 import { bounceOffWorldEdge, copyBall, createBall, type BallState, stepBall } from './ball';
+import { collidePlayers } from './collision';
 import { applyLaunch, type LaunchCommand } from './devLaunch';
 import { canKick, collideBallWithPlayer, markTouch, possessorId, tryTouch } from './dribble';
 import type { SimEvent } from './events';
@@ -110,6 +111,7 @@ export class Simulation {
       clampPlayerToWorld(p, this.geo.worldHalfLength, this.geo.worldHalfWidth);
       p.cooldown = Math.max(0, p.cooldown - this.dt);
     }
+    collidePlayers(s.players, owner);
     for (const p of s.players) this.playerBallContact(p, intents[p.id] ?? IDLE_INTENT);
 
     this.stepBallWithCollisions();

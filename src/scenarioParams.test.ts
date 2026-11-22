@@ -3,9 +3,9 @@ import { SIM } from './config';
 import { parseScenarioParams } from './scenarioParams';
 
 describe('parseScenarioParams', () => {
-  it('값이 없으면 freeplay와 기본 시드', () => {
+  it('값이 없으면 team(5:5)과 기본 시드', () => {
     expect(parseScenarioParams('')).toEqual({
-      scenario: 'freeplay',
+      scenario: 'team',
       seed: SIM.DEFAULT_SEED,
       warnings: [],
     });
@@ -21,7 +21,7 @@ describe('parseScenarioParams', () => {
 
   it('모르는 시나리오·잘못된 시드는 기본값으로 바꾸고 경고한다', () => {
     const p = parseScenarioParams('?scenario=moon&seed=abc');
-    expect(p.scenario).toBe('freeplay');
+    expect(p.scenario).toBe('team');
     expect(p.seed).toBe(SIM.DEFAULT_SEED);
     expect(p.warnings).toHaveLength(2);
   });

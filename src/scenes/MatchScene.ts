@@ -14,14 +14,13 @@ import { PowerGauge } from '../render/PowerGauge';
 import { createIntent, type PlayerIntent } from '../sim/intent';
 import { FixedStepClock } from '../sim/loop';
 import { lerp } from '../sim/math/scalar';
+import { TEAM_HOME } from '../sim/rules';
+import { nearestPlayerId } from '../sim/selection';
 import { Simulation } from '../sim/Simulation';
 import { parseScenarioParams } from '../scenarioParams';
 import { bannerFor } from '../ui/labels';
 import { DEBUG_OVERLAY_KEY, DebugOverlayScene, type DebugInfo } from './DebugOverlayScene';
 import { HUD_KEY, HudScene } from './HudScene';
-
-/** 사람이 조종하는 선수 id (선수 전환은 2.3) */
-const HUMAN_PLAYER_ID = 0;
 
 /**
  * 경기 화면. 고정 스텝으로 시뮬레이션을 돌리고, 이전·현재 상태를 보간해서 그린다.
@@ -38,6 +37,8 @@ export class MatchScene extends Phaser.Scene {
   private camera!: MatchCamera;
   private gauge!: PowerGauge;
   private debugWorld!: DebugWorldLayer;
+  /** 사람이 조종하는 선수 id (선수 전환은 2.3) */
+  private controlledId = 0;
   private stepMs = 0;
   /** 직전 프레임의 performance.now() (-1 = 첫 프레임) */
   private lastFrameMs = -1;
@@ -57,6 +58,8 @@ export class MatchScene extends Phaser.Scene {
     this.keyboard = new KeyboardState(Object.values(KEYS));
     this.human = new HumanController(this.keyboard, SIM.DT);
     this.intents = this.sim.curr.players.map(() => createIntent());
+    const ball = this.sim.curr.ball;
+    this.controlledId = nearestPlayerId(this.sim.curr.players, TEAM_HOME, ball.x, ball.y);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.keyboard.destroy());
 
     const geo = this.sim.geo;
@@ -64,7 +67,7 @@ export class MatchScene extends Phaser.Scene {
     createGoalLayers(this, geo);
     this.ballView = new BallView(this);
     this.playerViews = this.sim.curr.players.map(
-      (p) => new PlayerView(this, p.team, geo.worldHalfWidth),
+      (p) => new PlayerView(this, p.team, p.role, geo.worldHalfWidth),
     );
     this.gauge = new PowerGauge(this);
     this.debugWorld = new DebugWorldLayer(this);
@@ -90,7 +93,7 @@ export class MatchScene extends Phaser.Scene {
 
     const steps = this.clock.advance(realDt);
     for (let i = 0; i < steps; i++) {
-      const intent = this.intents[HUMAN_PLAYER_ID];
+      const intent = this.intents[this.controlledId];
       if (intent) this.human.sample(intent);
       this.sim.step(this.intents);
     }
@@ -111,8 +114,8 @@ export class MatchScene extends Phaser.Scene {
       const b = curr.players[i];
       if (a && b) v.update(a, b, alpha);
     });
-    const me = curr.players[HUMAN_PLAYER_ID];
-    const mePrev = prev.players[HUMAN_PLAYER_ID];
+    const me = curr.players[this.controlledId];
+    const mePrev = prev.players[this.controlledId];
     if (me && mePrev) {
       this.gauge.update(
         lerp(mePrev.x, me.x, alpha),
@@ -141,7 +144,7 @@ export class MatchScene extends Phaser.Scene {
   private setupDebugTools(): void {
     const getInfo = (): DebugInfo => {
       const b = this.sim.curr.ball;
-      const p = this.sim.curr.players[HUMAN_PLAYER_ID];
+      const p = this.sim.curr.players[this.controlledId];
       return {
         fps: this.game.loop.actualFps,
         stepMs: this.stepMs,

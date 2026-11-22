@@ -1,10 +1,11 @@
 import { copyBall, createBall, type BallState } from './ball';
+import { createTeam, formationSpot, TEAM_SIZE } from './formation';
 import type { PitchGeometry } from './pitch';
 import { createPlayer, type PlayerState } from './player';
-import { TEAM_HOME } from './rules';
+import { TEAM_AWAY, TEAM_HOME } from './rules';
 
 /** URL `?scenario=`로 바로 시작하는 상황. DESIGN.md §9 (corner·1v1·counter는 상대·AI가 생긴 뒤) */
-export const SCENARIO_IDS = ['freeplay', 'penalty'] as const;
+export const SCENARIO_IDS = ['team', 'freeplay', 'penalty'] as const;
 export type ScenarioId = (typeof SCENARIO_IDS)[number];
 
 export function isScenarioId(v: string): v is ScenarioId {
@@ -53,7 +54,27 @@ const penalty: Scenario = {
   },
 };
 
-const SCENARIOS: Record<ScenarioId, Scenario> = { freeplay, penalty };
+/**
+ * 5:5 킥오프 (2단계: 상대는 가만히 서 있음). 홈(id 0~4)은 +x로 공격, 원정(id 5~9)은 -x.
+ * 홈 공격수가 공 옆에서 킥오프. 골·아웃 뒤에는 모두 킥오프 자리로.
+ */
+const KICKOFF_TAKER_X = -1.5;
+const team: Scenario = {
+  id: 'team',
+  createPlayers: () => [...createTeam(TEAM_HOME, 1, 0), ...createTeam(TEAM_AWAY, -1, TEAM_SIZE)],
+  place(ball, players) {
+    copyBall(ball, createBall(0, 0));
+    for (const p of players) {
+      const dir = p.team === TEAM_HOME ? 1 : -1;
+      const spot = formationSpot(p.id % TEAM_SIZE, dir);
+      putPlayer(p, spot.x, spot.y, dir === 1 ? 0 : Math.PI);
+    }
+    const taker = players.find((p) => p.team === TEAM_HOME && p.role === 'FW');
+    if (taker) putPlayer(taker, KICKOFF_TAKER_X, 0, 0);
+  },
+};
+
+const SCENARIOS: Record<ScenarioId, Scenario> = { team, freeplay, penalty };
 
 export function getScenario(id: ScenarioId): Scenario {
   return SCENARIOS[id];

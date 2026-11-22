@@ -58,3 +58,41 @@ describe('시나리오', () => {
     expect(sim.curr.players[0]?.y).toBe(10);
   });
 });
+
+describe('team 시나리오 (5:5)', () => {
+  it('홈 5명(+x 공격), 원정 5명(-x 공격), GK-2-1-1', () => {
+    const sim = new Simulation(DT, 1, 'team');
+    const ps = sim.curr.players;
+    expect(ps).toHaveLength(10);
+    expect(ps.map((p) => p.id)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(ps.filter((p) => p.team === 0).map((p) => p.role)).toEqual([
+      'GK',
+      'DF',
+      'DF',
+      'MF',
+      'FW',
+    ]);
+    expect(ps[0]?.x).toBeLessThan(-45); // 홈 GK는 -x 골문
+    expect(ps[5]?.x).toBeGreaterThan(45); // 원정 GK는 +x 골문
+  });
+
+  it('킥오프: 홈 공격수가 공 옆, 원정은 모두 센터 서클 밖', () => {
+    const sim = new Simulation(DT, 1, 'team');
+    const fw = sim.curr.players[4];
+    expect(Math.hypot(fw?.x ?? 99, fw?.y ?? 99)).toBeLessThan(2);
+    for (const p of sim.curr.players.filter((q) => q.team === 1)) {
+      expect(Math.hypot(p.x, p.y)).toBeGreaterThan(sim.geo.circleRadius);
+    }
+  });
+
+  it('선수끼리 겹치지 않는다 (달려가 부딪혀도)', () => {
+    const sim = new Simulation(DT, 1, 'team');
+    const intents = sim.curr.players.map(() => createIntent());
+    const fw = intents[4];
+    if (fw) fw.moveX = 1; // 원정 공격수(x = +10) 쪽으로 달려간다
+    for (let i = 0; i < 60 * 3; i++) sim.step(intents);
+    const a = sim.curr.players[4];
+    const b = sim.curr.players[9];
+    expect(Math.hypot((a?.x ?? 0) - (b?.x ?? 0), (a?.y ?? 0) - (b?.y ?? 0))).toBeGreaterThan(0.79);
+  });
+});

@@ -3,9 +3,13 @@ import type { KickIntent, PlayerIntent } from './intent';
 import { angleDiff, degToRad, rotateToward } from './math/angle';
 import { clamp, lerp } from './math/scalar';
 
+/** 포지션. DESIGN.md §7 포메이션 */
+export type Role = 'GK' | 'DF' | 'MF' | 'FW';
+
 export interface PlayerState {
   readonly id: number;
   readonly team: number;
+  readonly role: Role;
   x: number;
   y: number;
   vx: number;
@@ -24,10 +28,18 @@ export interface PlayerState {
   kickBuffer: number;
 }
 
-export function createPlayer(id: number, team: number, x = 0, y = 0, facing = 0): PlayerState {
+export function createPlayer(
+  id: number,
+  team: number,
+  x = 0,
+  y = 0,
+  facing = 0,
+  role: Role = 'FW',
+): PlayerState {
   return {
     id,
     team,
+    role,
     x,
     y,
     vx: 0,
