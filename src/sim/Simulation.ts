@@ -1,12 +1,20 @@
-import { BALL, DEV_LAUNCH, RULES } from '../config';
+import { BALL, RULES } from '../config';
 import { bounceOffWorldEdge, copyBall, createBall, type BallState, stepBall } from './ball';
+import { applyLaunch, type LaunchCommand } from './devLaunch';
 import type { SimEvent } from './events';
 import { collideGoalFrame, collideNets } from './goalFrame';
+import { createIntent, type PlayerIntent } from './intent';
 import { detectCrossing } from './lines';
-import { rollSpeedForDistance } from './math/rolling';
 import { computePitchGeometry, type PitchGeometry } from './pitch';
+import {
+  clampPlayerToWorld,
+  copyPlayer,
+  createPlayer,
+  type PlayerState,
+  stepPlayer,
+} from './player';
 import { Rng } from './rng';
-import { restartFor, scoringTeam } from './rules';
+import { restartFor, scoringTeam, TEAM_HOME } from './rules';
 
 export interface SimState {
   /** 지금까지 실행한 스텝 수 */
@@ -14,6 +22,8 @@ export interface SimState {
   /** 시뮬레이션 시간 (초) = tick × dt */
   time: number;
   ball: BallState;
+  /** 선수들. 배열 인덱스 = 선수 id */
+  players: PlayerState[];
   /** 홈 팀 공격 방향 (전반 +1). 진영 교체는 4.2에서 */
   homeAttackDir: 1 | -1;
   /** 골·아웃 후 공을 다시 놓을 tick (-1 = 경기 진행 중) */
@@ -21,7 +31,14 @@ export interface SimState {
 }
 
 function createState(): SimState {
-  return { tick: 0, time: 0, ball: createBall(), homeAttackDir: 1, ballResetTick: -1 };
+  return {
+    tick: 0,
+    time: 0,
+    ball: createBall(),
+    players: [createPlayer(0, TEAM_HOME, -1.5, 0, 0)],
+    homeAttackDir: 1,
+    ballResetTick: -1,
+  };
 }
 
 /** 핫 루프에서 객체를 만들지 않도록 필드를 복사한다 */
@@ -29,15 +46,16 @@ function copyState(dst: SimState, src: SimState): void {
   dst.tick = src.tick;
   dst.time = src.time;
   copyBall(dst.ball, src.ball);
+  for (let i = 0; i < src.players.length; i++) {
+    const d = dst.players[i];
+    const p = src.players[i];
+    if (d && p) copyPlayer(d, p);
+  }
   dst.homeAttackDir = src.homeAttackDir;
   dst.ballResetTick = src.ballResetTick;
 }
 
-interface LaunchCommand {
-  x: number;
-  y: number;
-  lofted: boolean;
-}
+const IDLE_INTENT: Readonly<PlayerIntent> = createIntent();
 
 /**
  * 시뮬레이션 전체 상태와 한 스텝 진행. Phaser 없이 Node에서 돌아간다.
@@ -69,7 +87,8 @@ export class Simulation {
     return this.events.splice(0, this.events.length);
   }
 
-  step(): void {
+  /** intents[i] = 선수 i의 이번 스텝 의도 (없으면 가만히) */
+  step(intents: readonly PlayerIntent[] = []): void {
     copyState(this.prev, this.curr);
     const s = this.curr;
     s.tick++;
@@ -79,6 +98,11 @@ export class Simulation {
     if (this.launch) {
       applyLaunch(s.ball, this.launch);
       this.launch = null;
+    }
+
+    for (const p of s.players) {
+      stepPlayer(p, intents[p.id] ?? IDLE_INTENT, this.dt, false);
+      clampPlayerToWorld(p, this.geo.worldHalfLength, this.geo.worldHalfWidth);
     }
 
     this.stepBallWithCollisions();
@@ -121,35 +145,5 @@ export class Simulation {
     // 순간이동이므로 보간하지 않도록 prev도 맞춘다
     copyBall(this.prev.ball, s.ball);
     this.events.push({ type: 'ballReset', tick: s.tick });
-  }
-}
-
-/** 땅볼은 굴러감 해석해로 목표 지점에 ARRIVE_SPEED로 도착하게, 공중 볼은 체공 시간으로 계산 */
-function applyLaunch(b: BallState, cmd: LaunchCommand): void {
-  const dx = cmd.x - b.x;
-  const dy = cmd.y - b.y;
-  const d = Math.hypot(dx, dy);
-  if (d < 1e-6) return;
-  const ux = dx / d;
-  const uy = dy / d;
-
-  if (cmd.lofted) {
-    const t = DEV_LAUNCH.LOB_TIME_BASE + d * DEV_LAUNCH.LOB_TIME_PER_M;
-    const vh = d / t;
-    b.vx = ux * vh;
-    b.vy = uy * vh;
-    b.vz = (BALL.GRAVITY * t) / 2;
-  } else {
-    const v0 = rollSpeedForDistance(
-      d,
-      DEV_LAUNCH.ARRIVE_SPEED,
-      BALL.ROLL_DECEL,
-      BALL.ROLL_DAMPING,
-      DEV_LAUNCH.MAX_GROUND_SPEED,
-    );
-    b.z = 0;
-    b.vz = 0;
-    b.vx = ux * v0;
-    b.vy = uy * v0;
   }
 }

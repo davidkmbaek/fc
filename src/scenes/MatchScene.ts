@@ -1,25 +1,38 @@
 import Phaser from 'phaser';
-import { DEBUG, RENDER, SIM } from '../config';
+import { DEBUG, KEYS, SIM } from '../config';
 import { enableBallLauncher } from '../debug/ballLauncher';
 import { nextTimeScale } from '../debug/timeScale';
 import { bindDevKeys } from '../input/devKeys';
+import { HumanController } from '../input/humanController';
+import { KeyboardState } from '../input/keyboard';
 import { BallView } from '../render/BallView';
-import { mToPx } from '../render/coords';
-import { enableDevCameraControls } from '../render/devCameraControls';
+import { MatchCamera } from '../render/MatchCamera';
 import { createGoalLayers, createPitchImage } from '../render/PitchRenderer';
+import { PlayerView } from '../render/PlayerView';
+import { createIntent, type PlayerIntent } from '../sim/intent';
 import { FixedStepClock } from '../sim/loop';
+import { lerp } from '../sim/math/scalar';
 import { Simulation } from '../sim/Simulation';
 import { bannerFor } from '../ui/labels';
 import { DEBUG_OVERLAY_KEY, DebugOverlayScene, type DebugInfo } from './DebugOverlayScene';
 import { HUD_KEY, HudScene } from './HudScene';
 
+/** 사람이 조종하는 선수 id (선수 전환은 2.3) */
+const HUMAN_PLAYER_ID = 0;
+
 /**
  * 경기 화면. 고정 스텝으로 시뮬레이션을 돌리고, 이전·현재 상태를 보간해서 그린다.
+ * 입력은 스텝마다 의도(intent)로 바꿔 시뮬레이션에 넘긴다.
  */
 export class MatchScene extends Phaser.Scene {
   private clock!: FixedStepClock;
   private sim!: Simulation;
+  private keyboard!: KeyboardState;
+  private human!: HumanController;
+  private intents!: PlayerIntent[];
   private ballView!: BallView;
+  private playerViews!: PlayerView[];
+  private camera!: MatchCamera;
   private stepMs = 0;
   /** 직전 프레임의 performance.now() (-1 = 첫 프레임) */
   private lastFrameMs = -1;
@@ -34,24 +47,26 @@ export class MatchScene extends Phaser.Scene {
     this.stepMs = 0;
     this.lastFrameMs = -1;
 
-    createPitchImage(this, this.sim.geo);
-    createGoalLayers(this, this.sim.geo);
-    this.ballView = new BallView(this);
+    this.keyboard = new KeyboardState(Object.values(KEYS));
+    this.human = new HumanController(this.keyboard);
+    this.intents = this.sim.curr.players.map(() => createIntent());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.keyboard.destroy());
 
-    // 여백을 포함한 월드 전체가 화면에 들어오는 배율 (경기 카메라는 1.3에서)
     const geo = this.sim.geo;
-    const fitZoom = Math.min(
-      RENDER.WIDTH / mToPx(geo.worldHalfLength * 2),
-      RENDER.HEIGHT / mToPx(geo.worldHalfWidth * 2),
+    createPitchImage(this, geo);
+    createGoalLayers(this, geo);
+    this.ballView = new BallView(this);
+    this.playerViews = this.sim.curr.players.map(
+      (p) => new PlayerView(this, p.team, geo.worldHalfWidth),
     );
-    this.cameras.main.setZoom(fitZoom).centerOn(0, 0);
+    this.camera = new MatchCamera(this.cameras.main, geo);
+    this.camera.snapTo(this.sim.curr.ball.x, this.sim.curr.ball.y);
 
     this.scene.launch(HUD_KEY);
     this.setupDebugTools();
     this.pauseOnFocusLoss();
 
     if (import.meta.env.DEV) {
-      enableDevCameraControls(this, fitZoom);
       enableBallLauncher(this, (x, y, lofted) => this.sim.requestLaunch(x, y, lofted));
       void import('../debug/tuningPanel').then((m) => m.createTuningPanel(this.clock));
     }
@@ -63,15 +78,33 @@ export class MatchScene extends Phaser.Scene {
     const t0 = performance.now();
     const realDt = this.lastFrameMs < 0 ? 0 : (t0 - this.lastFrameMs) / 1000;
     this.lastFrameMs = t0;
+
     const steps = this.clock.advance(realDt);
-    for (let i = 0; i < steps; i++) this.sim.step();
+    for (let i = 0; i < steps; i++) {
+      const intent = this.intents[HUMAN_PLAYER_ID];
+      if (intent) this.human.sample(intent);
+      this.sim.step(this.intents);
+    }
     if (steps > 0) {
       const perStep = (performance.now() - t0) / steps;
       this.stepMs += (perStep - this.stepMs) * DEBUG.STEP_TIME_SMOOTHING;
     }
-    const alpha = this.clock.alpha;
-    this.ballView.update(this.sim.prev.ball, this.sim.curr.ball, alpha);
+
+    this.draw(this.clock.alpha, realDt);
     this.handleEvents();
+  }
+
+  private draw(alpha: number, realDt: number): void {
+    const { prev, curr } = this.sim;
+    this.ballView.update(prev.ball, curr.ball, alpha);
+    this.playerViews.forEach((v, i) => {
+      const a = prev.players[i];
+      const b = curr.players[i];
+      if (a && b) v.update(a, b, alpha);
+    });
+    const bx = lerp(prev.ball.x, curr.ball.x, alpha);
+    const by = lerp(prev.ball.y, curr.ball.y, alpha);
+    this.camera.follow(bx, by, curr.ball.vx, curr.ball.vy, this.clock.paused ? 0 : realDt);
   }
 
   /** 시뮬레이션 이벤트를 HUD에 전달 (구독만, 상태는 바꾸지 않음) */
@@ -86,6 +119,7 @@ export class MatchScene extends Phaser.Scene {
   private setupDebugTools(): void {
     const getInfo = (): DebugInfo => {
       const b = this.sim.curr.ball;
+      const p = this.sim.curr.players[HUMAN_PLAYER_ID];
       return {
         fps: this.game.loop.actualFps,
         stepMs: this.stepMs,
@@ -96,6 +130,10 @@ export class MatchScene extends Phaser.Scene {
         extra: [
           `ball   x ${b.x.toFixed(2)}  y ${b.y.toFixed(2)}  z ${b.z.toFixed(2)}`,
           `       |v| ${Math.hypot(b.vx, b.vy, b.vz).toFixed(2)} m/s  vz ${b.vz.toFixed(2)}`,
+          p
+            ? `player x ${p.x.toFixed(2)}  y ${p.y.toFixed(2)}  ${p.speed.toFixed(2)} m/s  ` +
+              `${Math.round((p.facing * 180) / Math.PI)}°`
+            : '',
         ],
       };
     };

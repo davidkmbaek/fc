@@ -1,3 +1,5 @@
+import { isTyping } from './keyboard';
+
 /** 개발·디버그 키 → 명령. DESIGN.md §9 */
 export interface DevKeyHandlers {
   toggleOverlay: () => void;
@@ -43,13 +45,4 @@ export function bindDevKeys(h: DevKeyHandlers): () => void {
   };
   window.addEventListener('keydown', onKeyDown);
   return () => window.removeEventListener('keydown', onKeyDown);
-}
-
-/** Tweakpane 입력칸 등에 글자를 입력하는 중이면 단축키를 무시한다 */
-function isTyping(target: EventTarget | null): boolean {
-  return (
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    (target instanceof HTMLElement && target.isContentEditable)
-  );
 }

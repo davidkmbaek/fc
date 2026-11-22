@@ -52,6 +52,25 @@ export const GOAL_PHYSICS = {
   NET_OUTSIDE_RESTITUTION: 0.2,
 };
 
+/** 선수 물리. DESIGN.md §4 */
+export const PLAYER = {
+  /** 충돌 반지름 (m) */
+  RADIUS: 0.4,
+  HEIGHT: 1.8,
+  RUN_SPEED: 6.0,
+  SPRINT_SPEED: 8.0,
+  /** 공을 몰고 갈 때 속도 배율 */
+  DRIBBLE_SPEED_FACTOR: 0.9,
+  /** m/s² */
+  ACCEL: 7,
+  DECEL: 10,
+  /** 최대 회전 속도: 정지 상태 → 스프린트 최고 속도 사이를 속도에 따라 보간 (°/s) */
+  TURN_RATE_SLOW_DEG: 720,
+  TURN_RATE_SPRINT_DEG: 270,
+  /** 이 크기 미만의 이동 입력은 무시 */
+  MOVE_DEADZONE: 0.15,
+};
+
 /** 경기 규칙 */
 export const RULES = {
   /** 골·아웃 후 공을 다시 놓을 때까지 (초). 경기 상태 머신(4.1) 전까지 임시 */
@@ -71,6 +90,7 @@ export const DEV_LAUNCH = {
 
 /** Tweakpane에서 조절할 섹션 (이름 → 객체). 값은 number만 */
 export const TUNABLES: Record<string, Record<string, number>> = {
+  PLAYER,
   BALL,
   GOAL_PHYSICS,
   DEV_LAUNCH,
@@ -164,11 +184,47 @@ export const HUD_STYLE = {
   BANNER_SMALL_SECONDS: 0.8,
 } as const;
 
-/** 개발 빌드 전용 임시 카메라 (1.3에서 경기 카메라로 대체) */
-export const DEV_CAMERA = {
-  /** 휠 한 칸당 확대 배율 */
-  WHEEL_ZOOM_FACTOR: 1.15,
-  MAX_ZOOM: 2,
+/** 경기 카메라. DESIGN.md §8 */
+export const CAMERA = {
+  /** 1.0 = 화면 너비 1280px에 40m (1280 / (40 × 32)) */
+  ZOOM: 1.0,
+  /** 목표점 = 공 위치 + 공 속도 × 이 시간 (진행 방향을 미리 보여줌) */
+  LOOKAHEAD_S: 0.3,
+  /** 목표점이 카메라 중심에서 이만큼(m) 벗어나기 전까지는 움직이지 않는다 */
+  DEADZONE_X: 3,
+  DEADZONE_Y: 2,
+  /** 따라가는 빠르기 (1/s). 클수록 빨리 따라감 */
+  FOLLOW_RATE: 5,
+};
+
+/** 키 배치 (KeyboardEvent.code). DESIGN.md §5 */
+export const KEYS = {
+  LEFT: 'ArrowLeft',
+  RIGHT: 'ArrowRight',
+  UP: 'ArrowUp',
+  DOWN: 'ArrowDown',
+  PASS: 'KeyS',
+  LOB: 'KeyA',
+  THROUGH: 'KeyW',
+  SHOOT: 'KeyD',
+  SPRINT: 'KeyE',
+  SWITCH: 'KeyQ',
+} as const;
+
+/** 선수 그리기 */
+export const PLAYER_STYLE = {
+  HOME_COLOR: 0xd32f2f,
+  AWAY_COLOR: 0x1e5fc0,
+  OUTLINE_COLOR: 0x111111,
+  OUTLINE_PX: 2,
+  /** 보는 방향 표시 (흰 삼각형) 길이 (m) */
+  NOSE_LENGTH: 0.35,
+  NOSE_COLOR: 0xffffff,
+  SHADOW_ALPHA: 0.3,
+  /** 그림자 오프셋 (m) */
+  SHADOW_OFFSET: 0.15,
+  /** 선수끼리 y 정렬: depth = PLAYERS + (y + 월드 반폭) × 이 값 (공 depth보다 작게) */
+  Y_SORT_SCALE: 0.01,
 } as const;
 
 /** 경기장 그리기 */
