@@ -1,20 +1,23 @@
-import { BALL, RULES } from '../config';
+import { BALL, DRIBBLE, RULES } from '../config';
 import { bounceOffWorldEdge, copyBall, createBall, type BallState, stepBall } from './ball';
 import { applyLaunch, type LaunchCommand } from './devLaunch';
+import { canKick, collideBallWithPlayer, markTouch, possessorId, tryTouch } from './dribble';
 import type { SimEvent } from './events';
 import { collideGoalFrame, collideNets } from './goalFrame';
 import { createIntent, type PlayerIntent } from './intent';
+import { executeShot } from './kick';
 import { detectCrossing } from './lines';
 import { computePitchGeometry, type PitchGeometry } from './pitch';
 import {
   clampPlayerToWorld,
+  copyKick,
   copyPlayer,
   createPlayer,
   type PlayerState,
   stepPlayer,
 } from './player';
 import { Rng } from './rng';
-import { restartFor, scoringTeam, TEAM_HOME } from './rules';
+import { attackDir, restartFor, scoringTeam, TEAM_HOME } from './rules';
 
 export interface SimState {
   /** 지금까지 실행한 스텝 수 */
@@ -100,13 +103,48 @@ export class Simulation {
       this.launch = null;
     }
 
+    const owner = possessorId(s.players, s.ball);
     for (const p of s.players) {
-      stepPlayer(p, intents[p.id] ?? IDLE_INTENT, this.dt, false);
+      stepPlayer(p, intents[p.id] ?? IDLE_INTENT, this.dt, p.id === owner);
       clampPlayerToWorld(p, this.geo.worldHalfLength, this.geo.worldHalfWidth);
+      p.cooldown = Math.max(0, p.cooldown - this.dt);
     }
+    for (const p of s.players) this.playerBallContact(p, intents[p.id] ?? IDLE_INTENT);
 
     this.stepBallWithCollisions();
     bounceOffWorldEdge(s.ball, this.geo.worldHalfLength, this.geo.worldHalfWidth);
+  }
+
+  /** 킥 → 드리블 터치 → 몸 충돌 순으로 선수와 공의 접촉을 처리한다 */
+  private playerBallContact(p: PlayerState, intent: PlayerIntent): void {
+    const s = this.curr;
+    const b = s.ball;
+    if (intent.kick) {
+      copyKick(p.kick, intent.kick);
+      p.kickBuffer = DRIBBLE.KICK_BUFFER;
+    }
+    if (p.kickBuffer > 0) {
+      if (canKick(p, b)) {
+        // 2.2에서 패스 종류를 추가한다. 지금은 모든 킥을 슛으로 처리
+        executeShot(b, p, p.kick, attackDir(p.team, s.homeAttackDir), this.geo, this.rng);
+        markTouch(b, p, s.time);
+        p.cooldown = DRIBBLE.KICK_COOLDOWN;
+        p.kickBuffer = 0;
+        this.events.push({
+          type: 'kick',
+          tick: s.tick,
+          playerId: p.id,
+          kind: p.kick.type,
+          power: p.kick.power,
+        });
+        return;
+      }
+      p.kickBuffer = Math.max(0, p.kickBuffer - this.dt);
+    } else {
+      // 킥을 기다리는 동안에는 터치하지 않는다 (공이 멀어지지 않게)
+      tryTouch(p, intent, b, s.time);
+    }
+    collideBallWithPlayer(b, p, s.time);
   }
 
   /** 공을 서브스텝으로 나눠 움직이며 골대 충돌과 라인 판정을 한다 */

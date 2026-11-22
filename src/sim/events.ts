@@ -1,3 +1,4 @@
+import type { KickType } from './intent';
 import type { OutLine } from './lines';
 import type { Restart } from './rules';
 
@@ -18,4 +19,5 @@ export type SimEvent =
       team: number;
     }
   | { type: 'frameHit'; tick: number; part: 'post' | 'crossbar' }
+  | { type: 'kick'; tick: number; playerId: number; kind: KickType; power: number }
   | { type: 'ballReset'; tick: number };

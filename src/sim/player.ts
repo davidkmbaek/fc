@@ -1,5 +1,5 @@
 import { PLAYER } from '../config';
-import type { PlayerIntent } from './intent';
+import type { KickIntent, PlayerIntent } from './intent';
 import { angleDiff, degToRad, rotateToward } from './math/angle';
 import { clamp, lerp } from './math/scalar';
 
@@ -14,10 +14,30 @@ export interface PlayerState {
   facing: number;
   /** 바라보는 방향으로의 속력 (m/s, 0 이상) */
   speed: number;
+  /** 다음 드리블 터치까지 남은 시간 (초) */
+  cooldown: number;
+  /**
+   * 입력 버퍼에 남은 킥 (DESIGN.md §5): 공을 컨트롤할 수 없을 때 누른 킥을
+   * kickBuffer초 동안 들고 있다가 컨트롤 가능해지면 실행한다. 0이면 없음.
+   */
+  kick: KickIntent;
+  kickBuffer: number;
 }
 
 export function createPlayer(id: number, team: number, x = 0, y = 0, facing = 0): PlayerState {
-  return { id, team, x, y, vx: 0, vy: 0, facing, speed: 0 };
+  return {
+    id,
+    team,
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    facing,
+    speed: 0,
+    cooldown: 0,
+    kick: { type: 'shot', power: 0, aimX: 0, aimY: 0 },
+    kickBuffer: 0,
+  };
 }
 
 export function copyPlayer(dst: PlayerState, src: PlayerState): void {
@@ -27,6 +47,16 @@ export function copyPlayer(dst: PlayerState, src: PlayerState): void {
   dst.vy = src.vy;
   dst.facing = src.facing;
   dst.speed = src.speed;
+  dst.cooldown = src.cooldown;
+  copyKick(dst.kick, src.kick);
+  dst.kickBuffer = src.kickBuffer;
+}
+
+export function copyKick(dst: KickIntent, src: KickIntent): void {
+  dst.type = src.type;
+  dst.power = src.power;
+  dst.aimX = src.aimX;
+  dst.aimY = src.aimY;
 }
 
 /** 현재 속력에서의 최대 회전 속도 (rad/s). 느릴 때 빠르게, 스프린트 속도에서 느리게 돈다 */

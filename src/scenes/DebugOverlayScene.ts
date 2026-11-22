@@ -51,6 +51,11 @@ export class DebugOverlayScene extends Phaser.Scene {
       .setVisible(false);
   }
 
+  /** 오버레이가 켜져 있는가 (월드 디버그 표시도 함께 켠다) */
+  get isOpen(): boolean {
+    return this.text?.visible ?? false;
+  }
+
   toggle(): void {
     if (!this.text) return;
     this.text.setVisible(!this.text.visible);

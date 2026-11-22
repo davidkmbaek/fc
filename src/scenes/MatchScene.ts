@@ -6,9 +6,11 @@ import { bindDevKeys } from '../input/devKeys';
 import { HumanController } from '../input/humanController';
 import { KeyboardState } from '../input/keyboard';
 import { BallView } from '../render/BallView';
+import { DebugWorldLayer } from '../render/DebugWorldLayer';
 import { MatchCamera } from '../render/MatchCamera';
 import { createGoalLayers, createPitchImage } from '../render/PitchRenderer';
 import { PlayerView } from '../render/PlayerView';
+import { PowerGauge } from '../render/PowerGauge';
 import { createIntent, type PlayerIntent } from '../sim/intent';
 import { FixedStepClock } from '../sim/loop';
 import { lerp } from '../sim/math/scalar';
@@ -33,6 +35,8 @@ export class MatchScene extends Phaser.Scene {
   private ballView!: BallView;
   private playerViews!: PlayerView[];
   private camera!: MatchCamera;
+  private gauge!: PowerGauge;
+  private debugWorld!: DebugWorldLayer;
   private stepMs = 0;
   /** 직전 프레임의 performance.now() (-1 = 첫 프레임) */
   private lastFrameMs = -1;
@@ -48,7 +52,7 @@ export class MatchScene extends Phaser.Scene {
     this.lastFrameMs = -1;
 
     this.keyboard = new KeyboardState(Object.values(KEYS));
-    this.human = new HumanController(this.keyboard);
+    this.human = new HumanController(this.keyboard, SIM.DT);
     this.intents = this.sim.curr.players.map(() => createIntent());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.keyboard.destroy());
 
@@ -59,6 +63,8 @@ export class MatchScene extends Phaser.Scene {
     this.playerViews = this.sim.curr.players.map(
       (p) => new PlayerView(this, p.team, geo.worldHalfWidth),
     );
+    this.gauge = new PowerGauge(this);
+    this.debugWorld = new DebugWorldLayer(this);
     this.camera = new MatchCamera(this.cameras.main, geo);
     this.camera.snapTo(this.sim.curr.ball.x, this.sim.curr.ball.y);
 
@@ -102,6 +108,18 @@ export class MatchScene extends Phaser.Scene {
       const b = curr.players[i];
       if (a && b) v.update(a, b, alpha);
     });
+    const me = curr.players[HUMAN_PLAYER_ID];
+    const mePrev = prev.players[HUMAN_PLAYER_ID];
+    if (me && mePrev) {
+      this.gauge.update(
+        lerp(mePrev.x, me.x, alpha),
+        lerp(mePrev.y, me.y, alpha),
+        this.human.charge,
+      );
+    }
+    const overlay = this.scene.get(DEBUG_OVERLAY_KEY);
+    this.debugWorld.update(curr, overlay instanceof DebugOverlayScene && overlay.isOpen);
+
     const bx = lerp(prev.ball.x, curr.ball.x, alpha);
     const by = lerp(prev.ball.y, curr.ball.y, alpha);
     this.camera.follow(bx, by, curr.ball.vx, curr.ball.vy, this.clock.paused ? 0 : realDt);

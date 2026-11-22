@@ -71,6 +71,59 @@ export const PLAYER = {
   MOVE_DEADZONE: 0.15,
 };
 
+/** 볼 컨트롤과 드리블. DESIGN.md §4 */
+export const DRIBBLE = {
+  /** 이 거리 안, 이 높이 아래, 이 상대 속도 미만이면 컨트롤 가능 */
+  CONTROL_RADIUS: 0.8,
+  CONTROL_MAX_Z: 0.6,
+  CONTROL_MAX_REL_SPEED: 7,
+  /**
+   * 드리블 터치는 공이 이 거리(m) 안에 들어왔을 때 한다 (DESIGN.md §4에는 없는 값).
+   * CONTROL_RADIUS 경계(0.8)에서 터치하면 공이 약 1.1m까지 앞서 나가 드리블 중 슛이 거의 안 된다.
+   * 0.55면 일반 드리블에서 공이 약 0.55 ~ 0.83m 사이에 머문다. 몸 충돌 거리(0.51)보다 커야 한다.
+   */
+  TOUCH_RADIUS: 0.55,
+  /**
+   * 킥(슛·패스)은 공이 이 거리(m) 안이면 찰 수 있다 (높이·상대 속도 조건은 컨트롤과 같음).
+   * 일반 드리블 최대 간격(약 0.83m)보다 커서 언제든 슛할 수 있다. 스프린트 드리블은 자주 놓친다.
+   */
+  KICK_RADIUS: 0.9,
+  /** 터치: 공 속도 = 선수 속도 + 이 값 (m/s) */
+  TOUCH_BOOST: 1.2,
+  TOUCH_BOOST_SPRINT: 3.0,
+  /** 터치 사이 최소 간격 (초) */
+  TOUCH_COOLDOWN: 0.25,
+  /** 이 속력 미만이면 터치하지 않는다 (공을 발밑에 둔 채 서 있기) */
+  TOUCH_MIN_PLAYER_SPEED: 0.5,
+  /** 공이 선수 뒤쪽에 있으면 터치하지 않는다: (공-선수)·보는방향 > 이 값(m)일 때만 */
+  TOUCH_MIN_FORWARD: -0.1,
+  /** 공이 선수 몸에 부딪힐 때 반발 */
+  BODY_RESTITUTION: 0.3,
+  /** 킥 직후 다시 터치하지 않는 시간 (초) */
+  KICK_COOLDOWN: 0.3,
+  /** 공을 컨트롤할 수 없을 때 누른 킥을 들고 있는 시간 (초). DESIGN.md §5 입력 버퍼 */
+  KICK_BUFFER: 0.15,
+};
+
+/** 슛. DESIGN.md §5 */
+export const SHOT = {
+  /** 버튼을 이만큼(초) 누르면 최대 파워 */
+  CHARGE_TIME: 1.0,
+  MIN_SPEED: 12,
+  MAX_SPEED: 30,
+  /** 수직 속도 = VZ_BASE + power² × VZ_POWER → 세게 찰수록 뜬다 */
+  VZ_BASE: 1.5,
+  VZ_POWER: 5.5,
+  /** 조준 입력 y가 이보다 크면 해당 포스트 쪽을 노린다 (아니면 골문 가운데) */
+  AIM_THRESHOLD: 0.3,
+  /** 포스트를 노릴 때 포스트 안쪽 여유 (m) */
+  POST_MARGIN: 0.6,
+  /** 각도 오차(°) = BASE + power² × POWER + 압박 수 × PRESSURE (2단계에서 압박 계산) */
+  ERROR_BASE_DEG: 1.5,
+  ERROR_POWER_DEG: 5,
+  ERROR_PRESSURE_DEG: 3,
+};
+
 /** 경기 규칙 */
 export const RULES = {
   /** 골·아웃 후 공을 다시 놓을 때까지 (초). 경기 상태 머신(4.1) 전까지 임시 */
@@ -91,6 +144,8 @@ export const DEV_LAUNCH = {
 /** Tweakpane에서 조절할 섹션 (이름 → 객체). 값은 number만 */
 export const TUNABLES: Record<string, Record<string, number>> = {
   PLAYER,
+  DRIBBLE,
+  SHOT,
   BALL,
   GOAL_PHYSICS,
   DEV_LAUNCH,
@@ -225,6 +280,23 @@ export const PLAYER_STYLE = {
   SHADOW_OFFSET: 0.15,
   /** 선수끼리 y 정렬: depth = PLAYERS + (y + 월드 반폭) × 이 값 (공 depth보다 작게) */
   Y_SORT_SCALE: 0.01,
+  /** 파워 게이지 (m): 선수 머리 위 */
+  GAUGE_WIDTH: 1.4,
+  GAUGE_HEIGHT: 0.22,
+  GAUGE_OFFSET_Y: 1.1,
+  GAUGE_BG: 0x000000,
+  GAUGE_FILL: 0xffd600,
+  GAUGE_FULL: 0xff5722,
+} as const;
+
+/** 디버그 오버레이의 월드 표시 (컨트롤 반경, 속도 벡터). DESIGN.md §9 */
+export const DEBUG_WORLD = {
+  CONTROL_COLOR: 0x00e5ff,
+  VELOCITY_COLOR: 0xffeb3b,
+  BALL_VELOCITY_COLOR: 0xff4081,
+  LINE_PX: 2,
+  /** 속도 벡터 길이 = 속도 × 이 시간 (초) */
+  VELOCITY_SCALE_S: 0.5,
 } as const;
 
 /** 경기장 그리기 */
