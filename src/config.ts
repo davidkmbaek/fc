@@ -118,6 +118,11 @@ export const DRIBBLE = {
   KICK_COOLDOWN: 0.3,
   /** 공을 컨트롤할 수 없을 때 누른 킥을 들고 있는 시간 (초). DESIGN.md §5 입력 버퍼 */
   KICK_BUFFER: 0.15,
+  /**
+   * 1이면: 패스를 받을 선수(ball.passTarget)가 누른 킥은 공이 도착할 때까지 유지한다 (원터치 패스).
+   * 0이면 DESIGN.md §5대로 KICK_BUFFER초 후 사라진다.
+   */
+  ONE_TOUCH_HOLD_FOR_RECEIVER: 1,
 };
 
 /** 슛. DESIGN.md §5 */
@@ -157,12 +162,16 @@ export const PASS = {
    * 3.1에서 도달 시간 비교(passSafety)로 바꾼다.
    */
   LANE_SAFE_DIST: 3.0,
-  /** 땅볼 패스가 받는 사람에게 도착할 때 속도 (m/s) */
-  ARRIVE_SPEED: 5,
+  /**
+   * 땅볼 패스가 받는 사람에게 도착할 때 속도 (m/s). 누른 세기(0 ~ 1)로 MIN ~ MAX, 가운데가 DESIGN.md §5의 약 5.
+   * DESIGN은 "초기 속도 ±30%"지만 감속 때문에 도착 속도가 크게 흔들려(톡 = 받는 사람 앞에서 멈춤,
+   * 세게 = 7 m/s 넘어 받지 못함) 도착 속도를 직접 정하도록 바꿨다 (승인 대기).
+   * MAX는 받기 한계(DRIBBLE.CONTROL_MAX_REL_SPEED = 7)보다 작게.
+   */
+  ARRIVE_SPEED_MIN: 3.5,
+  ARRIVE_SPEED_MAX: 6.5,
   MIN_SPEED: 6,
   MAX_SPEED: 22,
-  /** 누른 세기가 계산된 속도·거리에 주는 영향 (±) */
-  POWER_INFLUENCE: 0.3,
   /** 후보가 없을 때 조준 방향으로 차는 거리 = MIN ~ MAX (power에 비례) */
   NO_TARGET_DIST_MIN: 8,
   NO_TARGET_DIST_MAX: 30,

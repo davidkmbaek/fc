@@ -75,14 +75,16 @@ export function selectPassTarget(
   return best;
 }
 
-/** power(0 ~ 1)를 ±POWER_INFLUENCE 배율로 (0.5 = 1배) */
-function powerFactor(power: number): number {
-  return 1 + (clamp(power, 0, 1) - 0.5) * 2 * PASS.POWER_INFLUENCE;
+/** power(0 ~ 1) → 받는 사람에게 도착할 속도 ARRIVE_SPEED_MIN ~ MAX */
+export function arriveSpeed(power: number): number {
+  return (
+    PASS.ARRIVE_SPEED_MIN + (PASS.ARRIVE_SPEED_MAX - PASS.ARRIVE_SPEED_MIN) * clamp(power, 0, 1)
+  );
 }
 
 /**
  * 패스 실행 (짧은 패스·스루패스·로빙). 받을 동료 id를 돌려준다(-1 = 공간으로).
- * - 짧은 패스: 받는 사람에게 ARRIVE_SPEED로 도착하는 속도(굴러감 해석해) × 세기 배율
+ * - 짧은 패스: 받는 사람에게 arriveSpeed(power)로 도착하는 속도(굴러감 해석해)
  * - 스루패스: 받는 사람 앞 공간(조준 방향 × 달리기 속도 × 도착 시간)으로
  * - 로빙: 체공 시간으로 vz와 수평 속도를 계산
  */
@@ -111,7 +113,7 @@ export function executePass(
     ty = b.y + aim.y * d;
   }
 
-  let arrive = PASS.ARRIVE_SPEED;
+  let arrive = arriveSpeed(kick.power);
   if (kick.type === 'through' && target) {
     const d0 = Math.hypot(tx - b.x, ty - b.y);
     const v0 = rollSpeedForDistance(d0, arrive, BALL.ROLL_DECEL, BALL.ROLL_DAMPING, PASS.MAX_SPEED);
@@ -143,7 +145,7 @@ export function executePass(
       BALL.ROLL_DAMPING,
       PASS.MAX_SPEED,
     );
-    const speed = clamp(v0 * powerFactor(kick.power), PASS.MIN_SPEED, PASS.MAX_SPEED);
+    const speed = clamp(v0, PASS.MIN_SPEED, PASS.MAX_SPEED);
     b.vx = ux * speed;
     b.vy = uy * speed;
     b.vz = 0;

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BALL, DRIBBLE, PASS } from '../config';
 import { createIntent, type KickIntent, type KickType, type PlayerIntent } from './intent';
 import { rollDistance } from './math/rolling';
-import { laneSafety, selectPassTarget } from './passing';
+import { arriveSpeed, laneSafety, selectPassTarget } from './passing';
 import { createPlayer, type PlayerState } from './player';
 import { Simulation } from './Simulation';
 
@@ -93,7 +93,7 @@ describe('패스 실행 (Simulation)', () => {
     expect(Math.hypot(b.vx, b.vy)).toBeLessThan(0.5);
   });
 
-  it('짧은 패스는 받는 사람 앞에서 ARRIVE_SPEED ±1 m/s', () => {
+  it('짧은 패스는 받는 사람 앞에서 arriveSpeed(power) ±1 m/s', () => {
     const { sim, intents } = setup(1, [{ team: 0, x: 20, y: 0 }]);
     const i0 = intents[0] as PlayerIntent;
     i0.kick = kick('pass', 0.5, 1, 0);
@@ -101,7 +101,7 @@ describe('패스 실행 (Simulation)', () => {
     i0.kick = null;
     const b = sim.curr.ball;
     while (b.x < 20 - DRIBBLE.CONTROL_RADIUS - 0.2) sim.step(intents);
-    expect(Math.abs(Math.hypot(b.vx, b.vy) - PASS.ARRIVE_SPEED)).toBeLessThan(1);
+    expect(Math.abs(Math.hypot(b.vx, b.vy) - arriveSpeed(0.5))).toBeLessThan(1);
   });
 
   it('로빙 패스: 공이 떠서 동료 근처(±3m)에 처음 떨어진다', () => {

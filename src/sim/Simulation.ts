@@ -188,7 +188,10 @@ export class Simulation {
         });
         return;
       }
-      p.kickBuffer = Math.max(0, p.kickBuffer - this.dt);
+      // 이 선수에게 오는 패스라면 공이 도착할 때까지 킥을 들고 있는다 (원터치 패스)
+      if (b.passTarget !== p.id || DRIBBLE.ONE_TOUCH_HOLD_FOR_RECEIVER === 0) {
+        p.kickBuffer = Math.max(0, p.kickBuffer - this.dt);
+      }
     } else if (!tryTrap(p, b, s.time)) {
       // 킥을 기다리는 동안에는 받거나 터치하지 않는다 (원터치 킥을 위해, 공이 멀어지지 않게)
       tryTouch(p, intent, b, s.time);
